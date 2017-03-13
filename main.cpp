@@ -18,7 +18,7 @@
 #include "pthread.h"
 
 
-char LIGHTER_VERSION[] = "Lighter v1.1.1" ;
+char LIGHTER_VERSION[] = "Torch v0.1" ;
 
 char nucToNum[26] = { 0, -1, 1, -1, -1, -1, 2, 
 	-1, -1, -1, -1, -1, -1, -1,
@@ -67,13 +67,9 @@ void PrintHelp()
 		"Other parameters:\n"
 		"\t-od output_file_directory: (default: ./)\n"
 		"\t-t num_of_threads: number of threads to use (default: 1)\n"
-		"\t-maxcor INT: the maximum number of corrections within a 20bp window (default: 4)\n"
 		"\t-trim: allow trimming (default: false)\n"
-		"\t-discard: discard unfixable reads. Will LOSE paired-end matching when discarding (default: false)\n"
 		"\t-noQual: ignore the quality socre (default: false)\n"
 		"\t-newQual ascii_quality_score: set the quality for the bases corrected to the specified score (default: not used)\n"
-		//"\t-stable: sequentialize the sampling stage, output the same result with different runs (default: false)\n"
-		"\t-zlib compress_level: set the compression level(0-9) of gzip (default: 1)\n"
 		"\t-h: print the help message and quit\n"
 		"\t-v: print the version information and quit\n") ;
 }
@@ -280,7 +276,6 @@ int main( int argc, char *argv[] )
 	struct _summary summary ;
 
 	struct _SamplePattern *samplePatterns = NULL ;
-	bool setMaxCor ;
 
 	// variables for threads
 	int numOfThreads ;
@@ -300,9 +295,6 @@ int main( int argc, char *argv[] )
 	genomeSize = StringToUint64( argv[3] ) ;
 	alpha = (double)atof( argv[4] ) ;*/
 
-	paraDiscard = false ; 
-	MAX_CORRECTION = 4 ;
-	setMaxCor = false ;
 	ALLOW_TRIMMING = false ;
 	SET_NEW_QUAL = -1 ;
 	kmerLength = -1 ;
@@ -311,22 +303,13 @@ int main( int argc, char *argv[] )
 	//stable = false ;
 	inferAlpha = false ;
 	zlibLevel = 1 ;
+	paraDiscard = false;
 	memset( &summary, 0, sizeof( summary ) ) ;
 	
 	// Parse the arguments
 	for ( i = 1 ; i < argc ; ++i )
 	{
-		if ( !strcmp( "-discard", argv[i] ) )
-		{
-			paraDiscard = true ;
-		}
-		else if ( !strcmp( "-maxcor", argv[i] ) )
-		{
-			MAX_CORRECTION = atoi( argv[i + 1] ) ;
-			setMaxCor = true ;
-			++i ;
-		}
-		else if ( !strcmp( "-r", argv[i] ) )
+		if ( !strcmp( "-r", argv[i] ) )
 		{
 			//reads.AddReadFile( argv[i + 1 ] ) ;
 			++i;
@@ -391,16 +374,6 @@ int main( int argc, char *argv[] )
 			SET_NEW_QUAL = (int)argv[i + 1][0] ;
 			++i ;
 		}
-		else if ( !strcmp( "-stable", argv[i] ) )
-		{
-			//stable = true ;
-		}
-		else if ( !strcmp( "-zlib", argv[i] ) )
-		{
-			zlibLevel = atoi( argv[i+1] ) ;
-			reads.SetCompressLevel( zlibLevel ) ;
-			++i ;
-		}
 		else if ( !strcmp( "-h", argv[i] ) )
 		{
 			PrintHelp() ;
@@ -462,6 +435,7 @@ int main( int argc, char *argv[] )
 	// Prepare data structures and other data.
 	//Store kmers(1000000000ull) ;
 	//Store trustedKmers(1000000000ull) ;
+	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
 	Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 
@@ -475,12 +449,9 @@ int main( int argc, char *argv[] )
 		pthread_mutex_init( &mutexSampleKmers, NULL ) ;
 		pthread_mutex_init( &mutexStoreKmers, NULL ) ;
 
-		//kmers.SetNumOfThreads( numOfThreads ) ;
 		trustedKmers.SetNumOfThreads( numOfThreads ) ;
 	}
 	
-	//goodQuality = GetGoodQuality( reads ) ;
-	//reads.Rewind() ;
 	if ( ignoreQuality == false )
 		badQuality = GetBadQuality( reads ) ;
 	if ( badQuality != '\0' )
@@ -494,26 +465,11 @@ int main( int argc, char *argv[] )
 	}
 	reads.Rewind() ;
 
-	//printf( "%c\n", badQuality ) ;
-	//exit( 1 ) ;
-		/*for ( i = 1 ; i <= kmerLength ; ++i )
-	{
-		for ( j = 0 ; j <= i ; ++j )
-		{
-			printf( "%.10lf\t", trustF[i][j] ) ;
-		}
-		printf( "\n" ) ;
-	}
-	exit( 1 ) ;*/
-	//Store kmers((uint64_t)50000000 * 4, 0.001 ) ;
-	//Store trustedKmers((uint64_t)50000000 * 2, 0.001 ) ;
-		
-	
 	// Step 1: Sample the kmers 
 	//printf( "Begin step1. \n" ) ; fflush( stdout ) ;
 	srand( 17 ) ;
 	// Build the patterns for sampling
-	if ( numOfThreads > 1 )//&& stable == false )
+	if ( numOfThreads > 1 )
 	{
 		samplePatterns = ( struct _SamplePattern *)malloc( sizeof( *samplePatterns ) * SAMPLE_PATTERN_COUNT ) ;
 
@@ -532,15 +488,17 @@ int main( int argc, char *argv[] )
 			}
 		}
 	}
+	size_t nuniq_kmer_count_seen = 0;
+	size_t nuniq_kmer_count_added = 0;
 	// It seems serialization is faster than parallel. NOT true now!
-	if ( numOfThreads == 1 ) //|| stable == true )
+	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers ) ;
+			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &nuniq_kmer_count_added, &nuniq_kmer_count_seen ) ;
 		}
 	}
-	else //if ( 0 ) 
+	else
 	{
 		struct _SampleKmersThreadArg arg ;
 		void *pthreadStatus ;
@@ -554,9 +512,7 @@ int main( int argc, char *argv[] )
 		// sequence without considering the order.
 		arg.reads = &reads ;
 		arg.lock = &mutexSampleKmers ;
-		//arg.lockPut = &mutexSampleKmersPut ;
 
-		//numOfThreads = 1 ;
 		for ( i = 0 ; i < numOfThreads / 2 ; ++i )
 		{
 			pthread_create( &threads[i], &pthreadAttr, SampleKmers_Thread, (void *)&arg ) ;	
@@ -567,41 +523,22 @@ int main( int argc, char *argv[] )
 			pthread_join( threads[i], &pthreadStatus ) ;
 		}
 	}
-	if ( numOfThreads > 1 ) //&& stable == false )
+	if ( numOfThreads > 1 )
 		free( samplePatterns ) ;
-	//kmers.TemporaryInput( "sample_bf.out" ) ;
-	//kmers.TemporaryOutput( "sample_bf.out" ) ;
 
 	// Update the bloom filter's false positive rate.
 	// Compute the distribution of the # of sampled kmers from untrusted and trusted position
 	double tableAFP = kmers.GetFP() ;
-	for ( i = 1 ; i <= kmerLength ; ++i )
+	//CW: I commented these out
+	/*for ( i = 1 ; i <= kmerLength ; ++i )
 	{
 		int d = (int)( 0.1 / alpha * 2 );
 		double p ;
 		if ( d < 2 )
 			d = 2 ;
 		p = 1 - pow( ( 1 - alpha ), d ) ;
-		//else
-		//	p = 1 - pow( 1 - 0.05, 2 ) ;
-		//double p = 1 - pow( 1 - 0.05, 2 ) ;
-		//p = 0 ;
 		GetCumulativeBinomialDistribution( untrustF[i], i, p + tableAFP - p * tableAFP ) ;
-		//GetCumulativeBinomialDistribution( untrustF[i], i, tableAFP ) ;
-		//GetCumulativeBinomialDistribution( untrustF[i], i, alpha ) ;
-		//GetCumulativeBinomialDistribution( trustF[i], i, 1 - pow( ( 1 - alpha ), 20 ) ) ;
 	}
-
-	/*for ( i = 1 ; i <= kmerLength ; ++i )
-	{
-		for ( j = 0 ; j <= i ; ++j )
-		{
-			printf( "%.20lf\t", untrustF[i][j] ) ;
-		}
-		printf( "\n" ) ;
-	}
-	printf( "===============\n" ) ;
-	exit( 1 ) ;*/
 
 
 	for ( i = 1 ; i <= kmerLength ; ++i )
@@ -611,264 +548,22 @@ int main( int argc, char *argv[] )
 			if ( untrustF[i][j] >= 1 - 0.5 * 1e-2 )
 			{
 				threshold[i] = j ;
-				//if ( threshold[i] <= i / 2 )
-				//	threshold[i] = i / 2 ;
 				break ;
 			}
 		}
-	}
-	/*for ( i = 1 ; i <= kmerLength ; ++i )
-	{
-		printf( "%d %d\n", threshold[i] + 1, i ) ;
-	}
-	exit( 1 ) ;*/
+	}*/
 	PrintLog( "Finish sampling kmers" ) ;
-	
-	sprintf( buffer, "Bloom filter A's false positive rate: %lf", tableAFP ) ;
+		
+	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added ) ;
 	PrintLog( buffer ) ;
 
-	if ( setMaxCor == false && tableAFP > 0.1 )
-	{
-		++MAX_CORRECTION ;
-		if ( badQuality != '\0' )
-		{
-			++badQuality ;
-			sprintf( buffer, "The error rate is high. Lighter adjusts -maxcor to %d and bad quality threshold to \"%c\".", MAX_CORRECTION, badQuality ) ;
-		}
-		else
-			sprintf( buffer, "The error rate is high. Lighter adjusts -maxcor to %d.", MAX_CORRECTION ) ;
-		PrintLog( buffer ) ;
-	}
-	// Step 2: Store the trusted kmers
+	//CW: start the 2nd step of using another DS here (for counting) 
+
+	// Step 2: Store counts of kmers kmers
 	//printf( "Begin step2.\n") ; fflush( stdout ) ;
 	reads.Rewind() ;
-	if ( numOfThreads == 1 )
-	{
-		while ( reads.Next() )
-		{
-			StoreTrustedKmers( reads.seq, reads.qual, kmerLength, badQuality, threshold,
-					kmerCode, &kmers, &trustedKmers ) ;
-		}
-	}
-	else //if ( 0 )
-	{
-		struct _StoreKmersThreadArg arg ;
-		void *pthreadStatus ;
+	PrintLog( "Finish counting kmers" ) ;
 
-		arg.kmerLength = kmerLength ;
-		arg.threshold = threshold ;
-		arg.kmers = &kmers ;
-		arg.trustedKmers = &trustedKmers ;
-		arg.reads = &reads ;
-		arg.goodQuality = goodQuality ;
-		arg.badQuality = badQuality ;
-		arg.lock = &mutexStoreKmers ;
-		
-		for ( i = 0 ; i < numOfThreads ; ++i )
-		{
-			pthread_create( &threads[i], &pthreadAttr, StoreKmers_Thread, (void *)&arg ) ;
-		}
-
-		for ( i = 0 ; i < numOfThreads ; ++i )
-		{
-			pthread_join( threads[i], &pthreadStatus ) ;
-		}
-	}
-	PrintLog( "Finish storing trusted kmers" ) ;
-
-	//trustedKmers.TemporaryInput( "bf.out ") ;
-	//trustedKmers.TemporaryOutput( "bf.out ") ;
-
-	// Step 3: error correction
-	//printf( "%lf %lf\n", kmers.GetFP(), trustedKmers.GetFP() ) ;
-	reads.Rewind() ;
-	// Different ways of parallel depending on the number of threads.
-	if ( numOfThreads == 1 )
-	{
-		while ( reads.Next() )
-		{
-			//readId = reads.id ;
-			//read = reads.seq ;
-			/*kmerCode = 0 ;
-			  for ( i = 0 ; i < kmerLength ; ++i )
-			  {
-			  kmerCode = kmerCode << (uint64_t)2 ;
-			  kmerCode = kmerCode | (uint64_t)nucToNum[ read[i] - 'A' ] ;
-			  }
-			  if ( !trustedKmers.IsIn( kmerCode ) )
-			  {
-			//printf( "- %d %lld\n", i, kmerCode ) ;
-			printf( "%s\n%s\n", readId, read ) ;
-			continue ;
-			}
-			for ( ; read[i] ; ++i )
-			{
-			kmerCode = ( kmerCode << (uint64_t)2 ) & mask ;
-			kmerCode = kmerCode | (uint64_t)nucToNum[ read[i] - 'A' ] ;
-
-			if ( !trustedKmers.IsIn( kmerCode ) )
-			{
-			printf( "%s\n%s\n", readId, read ) ;
-			break ;
-			}
-			}
-			continue ;*/
-			int info ;
-			int tmp = ErrorCorrection_Wrapper( reads.seq, reads.qual, kmerCode, badQuality, &trustedKmers, badPrefix, badSuffix, info ) ;
-
-			//if ( reads.HasQuality() )
-			//	
-			//else
-			//	readId[0] = '>' ;
-			UpdateSummary( reads.seq, tmp, badSuffix, paraDiscard, summary ) ;			
-
-			reads.Output( tmp, badPrefix, badSuffix, info, ALLOW_TRIMMING ) ;
-		}
-	}
-	else if ( numOfThreads == 2 )
-	{
-		int maxBatchSize = READ_BUFFER_PER_THREAD * numOfThreads ;
-		int batchSize ;
-		int fileInd ;
-		struct _ErrorCorrectionThreadArg arg ;
-		pthread_mutex_t errorCorrectionLock ;
-		void *pthreadStatus ;
-
-		struct _Read *readBatch = ( struct _Read *)malloc( sizeof( struct _Read ) * maxBatchSize ) ;
-		pthread_mutex_init( &errorCorrectionLock, NULL ) ;
-
-		arg.kmerLength = kmerLength ;
-		arg.trustedKmers = &trustedKmers ;
-		arg.readBatch = readBatch ;
-		arg.lock = &errorCorrectionLock ;
-		arg.badQuality = badQuality ;
-
-		while ( 1 )
-		{
-			batchSize = reads.GetBatch( readBatch, maxBatchSize, fileInd, true, true ) ;
-			if ( batchSize == 0 )
-				break ; 
-			//printf( "batchSize=%d\n", batchSize ) ;
-			arg.batchSize = batchSize ;
-			arg.batchUsed = 0 ;
-			for ( i = 0 ; i < numOfThreads ; ++i )
-				pthread_create( &threads[i], &pthreadAttr, ErrorCorrection_Thread, (void *)&arg ) ;	
-
-			for ( i = 0 ; i < numOfThreads ; ++i )
-				pthread_join( threads[i], &pthreadStatus ) ;
-			
-			for ( i = 0 ; i < batchSize ; ++i )
-				UpdateSummary( readBatch[i].seq, readBatch[i].correction, readBatch[i].badSuffix, paraDiscard, summary ) ;			
-			reads.OutputBatch( readBatch, batchSize, ALLOW_TRIMMING, fileInd ) ;
-		}
-
-		free( readBatch ) ;	
-	}
-	else 
-	{
-		int maxBatchSize = READ_BUFFER_PER_THREAD * ( numOfThreads - 1 ) ;
-		int batchSize[2] ;
-		bool init = true, canJoinOutputThread = false ;
-		int tag = 2, prevTag ;
-		int fileInd[2] ;
-
-		int useOutputThread = 0 ;
-		pthread_t outputThread ;
-		struct _OutputThreadArg outputArg ;
-
-		struct _ErrorCorrectionThreadArg arg ;
-		pthread_mutex_t errorCorrectionLock ;
-		void *pthreadStatus ;
-		
-		struct _Read *readBatch[3] ;
-		readBatch[0] = ( struct _Read *)malloc( sizeof( struct _Read ) * maxBatchSize ) ;
-		readBatch[1] = ( struct _Read *)malloc( sizeof( struct _Read ) * maxBatchSize ) ;
-		readBatch[2] = ( struct _Read *)malloc( sizeof( struct _Read ) * maxBatchSize ) ;
-		
-		pthread_mutex_init( &errorCorrectionLock, NULL ) ;
-
-		arg.kmerLength = kmerLength ;
-		arg.trustedKmers = &trustedKmers ;
-		//arg.readBatch = readBatch ;
-		arg.lock = &errorCorrectionLock ;
-		arg.badQuality = badQuality ;
-		arg.batchSize = 0 ;
-		arg.batchFinished = 0 ;
-		
-		if ( numOfThreads >= 6 )
-			useOutputThread = 1 ;
-
-		while ( 1 )
-		{
-			prevTag = tag ;
-			tag = ( tag + 1 > 2 ) ? 0 : ( tag + 1 ) ;
-
-			batchSize[tag] = reads.GetBatch( readBatch[tag], maxBatchSize, fileInd[tag], true, true ) ;
-
-			// Wait for the previous batch finish
-			if ( !init )
-			{
-				if ( canJoinOutputThread  ) // wait for the finish of the previous previous batch's output
-					pthread_join( outputThread, &pthreadStatus ) ;
-				for ( i = 0 ; i < numOfThreads - 1 - useOutputThread ; ++i )
-					pthread_join( threads[i], &pthreadStatus ) ;
-			}
-
-			// Start current batch
-			if ( batchSize[tag] != 0 )
-			{
-
-				//printf( "batchSize=%d\n", batchSize ) ;
-				arg.batchSize = batchSize[tag] ;
-				arg.readBatch = readBatch[tag] ;
-				arg.batchUsed = 0 ;
-				arg.batchFinished = 0 ;
-				for ( i = 0 ; i < numOfThreads - 1 - useOutputThread ; ++i )
-					pthread_create( &threads[i], &pthreadAttr, ErrorCorrection_Thread, (void *)&arg ) ;	
-
-				//for ( i = 0 ; i < numOfThreads - 1 ; ++i )
-				//	pthread_join( threads[i], &pthreadStatus ) ;
-			}
-
-			// Output previous batch 
-			if ( !init )
-			{
-				// Create another thread to output previous batch
-				if ( !useOutputThread )
-				{
-					for (  i = 0 ; i < batchSize[prevTag] ; ++i )
-						UpdateSummary( readBatch[prevTag][i].seq, readBatch[prevTag][i].correction, readBatch[prevTag][i].badSuffix, paraDiscard, summary ) ;			
-					reads.OutputBatch( readBatch[prevTag], batchSize[prevTag], ALLOW_TRIMMING, fileInd[prevTag] ) ;
-				}
-				else
-				{	
-					outputArg.readBatch = readBatch[ prevTag ] ;
-					outputArg.batchSize = batchSize[prevTag] ;
-					outputArg.summary = &summary ;
-					outputArg.paraDiscard = paraDiscard ;
-					outputArg.reads = &reads ;
-					outputArg.fileInd = fileInd[ prevTag] ;
-
-					pthread_create( &outputThread, &pthreadAttr, Output_Thread, (void *)&outputArg ) ;	
-					canJoinOutputThread = true ;
-				}
-			}
-
-			if ( batchSize[tag] == 0 )
-				break ;
-
-			init = false ;
-		}
-
-		if ( canJoinOutputThread )
-			pthread_join( outputThread, &pthreadStatus ) ;
-		//fprintf( stderr, "jump out\n" ) ;
-		free( readBatch[2] ) ;
-		free( readBatch[1] ) ;	
-		free( readBatch[0] ) ;
-	}
-
-	PrintLog( "Finish error correction" ) ;
-	PrintSummary( summary ) ;
+	//PrintSummary( summary ) ;
 	return 0 ;
 }

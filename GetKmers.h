@@ -53,7 +53,7 @@ struct _StoreKmersThreadArg
 } ;
 
 void *SampleKmers_Thread( void *arg ) ;
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers ) ;
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, size_t* kcount_added, size_t* kcount_seen ) ;
 
 void *StoreKmers_Thread( void *arg ) ;
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,  
