@@ -8,16 +8,41 @@
 #include <map>
 
 #include "bloom_filter.hpp"
+extern "C" {
+#include "sketch.h"
+}
 #include "KmerCode.h"
+
+/*extern "C" {
+bool init(size_t D, size_t WL, size_t Z, size_t bits_c);
+void inc(const unsigned char * str, size_t len, size_t delta);     //increase by one
+size_t query(const unsigned char * str, size_t len);
+}*/
+
+const static int SF_LENGTH=8;
+
 
 class Store
 {
 private:
 	uint64_t size ;
 	bloom_parameters bfpara ;
-	bloom_filter bf ;
+	//bloom_filter bf ;
 	std::map<uint64_t, int> hash ;
 	int method ; //0-bloom filter. 1-std:map
+
+	//following functions from:
+	//http://stackoverflow.com/questions/9695720/how-do-i-convert-a-64bit-integer-to-a-char-array-and-back
+	//needed it to convert from Lighter's uint64 to character array for SF sketch
+	void int64ToChar(unsigned char a[], int64_t n) {
+		  memcpy(a, &n, 8);
+	}
+
+	int64_t charTo64bitNum(unsigned char a[]) {
+		  int64_t n = 0;
+		  memcpy(&n, a, 8);
+		  return n;
+	}
 
 #if MAX_KMER_LENGTH <= 32 
 	int Put( uint64_t val, int kmerLength, bool testFirst )
@@ -33,10 +58,15 @@ private:
 			hash[ val ] = 1 ;
 			return 1 ;
 		}
-		
-		if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
+
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+
+		//if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
+		if ( numOfThreads > 1 && testFirst && query( valc, SF_LENGTH ) > 0 )
 			return 0 ;
-		bf.insert( val ) ;
+		//bf.insert( val ) ;
+		inc(valc, SF_LENGTH, 1);
 		return 0 ;
 	}
 
@@ -49,8 +79,11 @@ private:
 		{
 			return ( hash.find( val ) != hash.end() ) ;
 		}
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
 
-		return bf.contains( val ) ;
+		//return bf.contains( val ) ;
+		return query( valc, SF_LENGTH ) ;
 	}
 #else
 	int Put( uint64_t code[], int kmerLength, bool testFirst )
@@ -90,16 +123,20 @@ private:
 #endif 
 	int numOfThreads ;
 public:
-	Store( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate ), bf( bfpara )
+	Store( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate )//, bf( bfpara )
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
+		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
+		init(D, W, Z, Bits_c);
 	}
 
-	Store( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate ), bf( bfpara )  
+	Store( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate )//, bf( bfpara )  
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
+		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
+		init(D, W, Z, Bits_c);
 	}
 
 	~Store() 
@@ -108,13 +145,16 @@ public:
 	
 	double Occupancy()
 	{
-		return bf.occupancy() ;
+		return 0;
+		//return bf.occupancy() ;
 	}
 	double GetFP()
 	{
-		if ( method == 1 )
+		return 0;
+		
+		/*if ( method == 1 )
 			return 0 ;
-		return bf.GetActualFP() ;
+		return bf.GetActualFP() ;*/
 	}
 	int Put( KmerCode &code, bool testFirst = false ) 
 	{
@@ -147,7 +187,7 @@ public:
 	void SetNumOfThreads( int in ) 
 	{ 
 		numOfThreads = in ;
-		bf.SetNumOfThreads( in ) ;
+		//bf.SetNumOfThreads( in ) ;
 	}
 
 #if MAX_KMER_LENGTH <= 32 
@@ -213,14 +253,14 @@ public:
 	void TemporaryOutput( char *file)
 	{
 		FILE *fp = fopen( file, "w" ) ;
-		bf.Output( fp ) ;
+		//bf.Output( fp ) ;
 		fclose( fp ) ;
 	}
 
 	void TemporaryInput( char *file ) 
 	{
 		FILE *fp = fopen( file, "r" ) ;
-		bf.Input( fp ) ;
+		//bf.Input( fp ) ;
 		fclose( fp ) ;
 	}
 
