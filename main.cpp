@@ -529,6 +529,16 @@ int main( int argc, char *argv[] )
 	// Update the bloom filter's false positive rate.
 	// Compute the distribution of the # of sampled kmers from untrusted and trusted position
 	double tableAFP = kmers.GetFP() ;
+	//how many have > 1 occurrence
+	reads.Rewind() ;
+	uint64_t total_count = 0;
+	if ( numOfThreads == 1 )
+	{
+		while ( reads.Next() != 0 )
+		{
+			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmers, 1) ;
+		}
+	}
 	//CW: I commented these out
 	/*for ( i = 1 ; i <= kmerLength ; ++i )
 	{
@@ -554,14 +564,14 @@ int main( int argc, char *argv[] )
 	}*/
 	PrintLog( "Finish sampling kmers" ) ;
 		
-	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added ) ;
+	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\ntotal # of kmers with > 1 occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, total_count ) ;
 	PrintLog( buffer ) ;
 
 	//CW: start the 2nd step of using another DS here (for counting) 
 
 	// Step 2: Store counts of kmers kmers
 	//printf( "Begin step2.\n") ; fflush( stdout ) ;
-	reads.Rewind() ;
+	//reads.Rewind() ;
 	PrintLog( "Finish counting kmers" ) ;
 
 	//PrintSummary( summary ) ;

@@ -241,6 +241,42 @@ void *StoreKmers_Thread( void *arg )
 	return NULL ;
 }
 
+uint64_t CountKmers( char *read, char *qual, int kmerLength,
+	KmerCode &kmerCode, Store *kmers, int cutoff )
+{
+	bool occur[MAX_READ_LENGTH] ;
+	bool trustedPosition[MAX_READ_LENGTH] ;
+	int i ;
+	uint64_t total_count = 0;
+
+	kmerCode.Restart() ;
+	for ( i = 0 ; i < kmerLength ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+	}
+	//CW note: do first kmer
+	int count = kmers->IsIn( kmerCode);
+	if(count > cutoff) {
+		total_count+=1;
+		kmers->decrease(kmerCode, count); 
+		//trustedKmers->Put( kmerCode, true ) ;
+	}
+
+	//CW note: then the rest
+	for ( ; read[i] ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+		count = kmers->IsIn( kmerCode);
+		if(count > cutoff) {
+			total_count+=1;
+			kmers->decrease(kmerCode, count); 
+			//trustedKmers->Put( kmerCode, true ) ;
+		}
+	}
+	return total_count;
+}
+
+
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,
 	KmerCode &kmerCode, Store *kmers, Store *trustedKmers )
 {

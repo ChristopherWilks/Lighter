@@ -58,4 +58,5 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 void *StoreKmers_Thread( void *arg ) ;
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,  
 	KmerCode &kmerCode, Store *kmers, Store *trustedKmers ) ;
+uint64_t CountKmers( char *read, char *qual, int kmerLength, KmerCode &kmerCode, Store *kmers, int cutoff );
 #endif

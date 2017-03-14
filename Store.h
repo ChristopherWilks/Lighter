@@ -63,13 +63,15 @@ private:
 		int64ToChar(valc, val);
 
 		//if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
-		if ( numOfThreads > 1 && testFirst && query( valc, SF_LENGTH ) > 0 )
+		if ( testFirst && query( valc, SF_LENGTH ) > 0 )
 			return 0 ;
 		//bf.insert( val ) ;
 		inc(valc, SF_LENGTH, 1);
+		int c = query(valc, SF_LENGTH);
+		//printf("count of %d\n",c);
 		return 0 ;
 	}
-
+	
 	int IsIn( uint64_t val, int kmerLength ) 
 	{
 		//printf( "1. %llu\n", val ) ;
@@ -84,6 +86,15 @@ private:
 
 		//return bf.contains( val ) ;
 		return query( valc, SF_LENGTH ) ;
+	}
+
+	void decrease(uint64_t val, int kmerLength, uint64_t count)
+	{
+		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+		
+		dec(valc, SF_LENGTH, count);
 	}
 #else
 	int Put( uint64_t code[], int kmerLength, bool testFirst )
@@ -156,6 +167,21 @@ public:
 			return 0 ;
 		return bf.GetActualFP() ;*/
 	}
+
+	void decrease(KmerCode code, uint64_t count)
+	{
+		if ( !code.IsValid() )
+			return;
+#if MAX_KMER_LENGTH <= 32 
+		decrease(code.GetCode(), code.GetKmerLength(), count);
+#else
+		uint64_t c[K_BLOCK_NUM] ;
+		code.GetCode( c ) ;
+		decrease(code.GetCode(), code.GetKmerLength(), count);
+#endif
+	}
+
+
 	int Put( KmerCode &code, bool testFirst = false ) 
 	{
 		if ( !code.IsValid() )
@@ -169,7 +195,7 @@ public:
 #endif
 		return 0 ;
 	}
-
+	
 	int IsIn( KmerCode &code ) 
 	{
 		if ( !code.IsValid() )
