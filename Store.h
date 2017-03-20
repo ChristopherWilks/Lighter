@@ -52,12 +52,6 @@ private:
 		//printf( "%llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
 		//printf( "%llu\n", val ) ;
-		//exit(1) ;
-		if ( method == 1 )
-		{
-			hash[ val ] = 1 ;
-			return 1 ;
-		}
 
 		unsigned char valc[SF_LENGTH];	
 		int64ToChar(valc, val);
@@ -67,9 +61,9 @@ private:
 			return 0 ;
 		//bf.insert( val ) ;
 		inc(valc, SF_LENGTH, 1);
-		int c = query(valc, SF_LENGTH);
+		//int c = query(valc, SF_LENGTH);
 		//printf("count of %d\n",c);
-		return 0 ;
+		return 1 ;
 	}
 	
 	int IsIn( uint64_t val, int kmerLength ) 
@@ -77,10 +71,7 @@ private:
 		//printf( "1. %llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
 		//printf( "2. %llu\n", val ) ;
-		if ( method == 1 )
-		{
-			return ( hash.find( val ) != hash.end() ) ;
-		}
+		
 		unsigned char valc[SF_LENGTH];	
 		int64ToChar(valc, val);
 
@@ -91,6 +82,7 @@ private:
 	void decrease(uint64_t val, int kmerLength, uint64_t count)
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
+
 		unsigned char valc[SF_LENGTH];	
 		int64ToChar(valc, val);
 		
