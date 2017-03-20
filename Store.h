@@ -8,18 +8,7 @@
 #include <map>
 
 #include "bloom_filter.hpp"
-extern "C" {
-#include "sketch.h"
-}
 #include "KmerCode.h"
-
-/*extern "C" {
-bool init(size_t D, size_t WL, size_t Z, size_t bits_c);
-void inc(const unsigned char * str, size_t len, size_t delta);     //increase by one
-size_t query(const unsigned char * str, size_t len);
-}*/
-
-const static int SF_LENGTH=8;
 
 
 class Store
@@ -88,8 +77,6 @@ public:
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
-		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
-		init(D, W, Z, Bits_c);
 		uniq = 0;
 		uniq2 = 0;
 	}
@@ -98,8 +85,6 @@ public:
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
-		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
-		init(D, W, Z, Bits_c);
 		uniq = 0;
 		uniq2 = 0;
 	}
