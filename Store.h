@@ -9,6 +9,11 @@
 
 #include "bloom_filter.hpp"
 #include "KmerCode.h"
+#include "cmlsketch.h"
+#include "bench_common.h"
+  		
+
+const static int SF_LENGTH=8;
 
 
 class Store
@@ -17,6 +22,8 @@ private:
 	uint64_t size ;
 	uint64_t uniq ;
 	uint64_t uniq2 ;
+	//void *cml;
+	CMLSketch* cml;
 	bloom_parameters bfpara ;
 	//bloom_filter bf ;
 	std::map<uint64_t, int> hash ;
@@ -38,52 +45,54 @@ private:
 	int Put( uint64_t val, int kmerLength, bool testFirst )
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+          	//((CMLSketch*) cml)->insert(valc, SF_LENGTH, 1);
+		size_t c2 = cml->queryPoint(valc, SF_LENGTH);
+		size_t c3 = 0;
 		if(hash.find( val ) != hash.end())
 		{
-			if(hash[ val ]==1)
-				uniq2+=1;
-			hash[ val ]+=1;
+			c3=hash[ val ];
+			hash[ val ] += 1;
 		}
 		else
 		{
-			uniq+=1;
-			hash[ val ]=1;
+			hash[ val ] = 1;
 		}
+
+		if(c2 > c3 && c3>=2)
+		//if(c2 == c3)
+		{
+			uniq+=1;
+		}
+
+		if(c2 == 1)
+		{
+			uniq2+=1;
+		}
+		/*else if(c2 == 0)
+		{
+			uniq+=1;
+		}*/
+          	cml->insert(valc, SF_LENGTH, 1);
 		return 1;
 	}
 	
-	int IsIn( uint64_t val, int kmerLength ) 
+	size_t IsIn( uint64_t val, int kmerLength ) 
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		if(hash.find( val ) != hash.end())
-		{
-			return hash.find( val )->second;
-		}
-		return 0;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+       		//return ((CMLSketch*) cml)->queryPoint(valc, SF_LENGTH);
+       		return cml->queryPoint(valc, SF_LENGTH);
 	}
 
-	void decrease(uint64_t val, int kmerLength, uint64_t count)
-	{
-		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		if(hash.find( val ) != hash.end())
-		{
-			hash.erase(val);
-		}
-		return;
-	}
 	int numOfThreads ;
 public:
-	Store( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate )//, bf( bfpara )
+	Store( CMLSketch* cml_ )
 	{
 		numOfThreads = 1 ;
-		method = 0 ;
-		uniq = 0;
-		uniq2 = 0;
-	}
-
-	Store( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate )//, bf( bfpara )  
-	{
-		numOfThreads = 1 ;
+		cml = cml_;
 		method = 0 ;
 		uniq = 0;
 		uniq2 = 0;
@@ -101,14 +110,6 @@ public:
 	{
 		return 0;
 	}
-
-	void decrease(KmerCode code, uint64_t count)
-	{
-		if ( !code.IsValid() )
-			return;
-		decrease(code.GetCode(), code.GetKmerLength(), count);
-	}
-
 
 	int Put( KmerCode &code, bool testFirst = false ) 
 	{

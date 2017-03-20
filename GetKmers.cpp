@@ -246,7 +246,7 @@ void *StoreKmers_Thread( void *arg )
 }
 
 uint64_t CountKmers( char *read, char *qual, int kmerLength,
-	KmerCode &kmerCode, Store *kmers, int cutoff )
+	KmerCode &kmerCode, Store *kmers, int cutoff)
 {
 	int i ;
 	uint64_t total_count = 0;
@@ -260,7 +260,6 @@ uint64_t CountKmers( char *read, char *qual, int kmerLength,
 	int count = kmers->IsIn( kmerCode );
 	if(count > cutoff) {
 		total_count+=1;
-		kmers->decrease(kmerCode, count); 
 		//trustedKmers->Put( kmerCode, true ) ;
 	}
 
@@ -271,7 +270,6 @@ uint64_t CountKmers( char *read, char *qual, int kmerLength,
 		count = kmers->IsIn( kmerCode );
 		if(count > cutoff) {
 			total_count+=1;
-			kmers->decrease(kmerCode, count); 
 			//trustedKmers->Put( kmerCode, true ) ;
 		}
 	}

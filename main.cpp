@@ -17,6 +17,9 @@
 #include "KmerCode.h"
 #include "GetKmers.h"
 #include "pthread.h"
+#include "cmlsketch.h"
+#include "bench_common.h"
+
 
 
 char LIGHTER_VERSION[] = "Torch v0.1" ;
@@ -276,6 +279,9 @@ int main( int argc, char *argv[] )
 	uint64_t genomeSize = 0;
 	struct _summary summary ;
 
+	size_t D=10,W=100000,Bits_c=16;
+	CMLSketch cml(D, W*4, Bits_c, 1.08, 255);
+
 	struct _SamplePattern *samplePatterns = NULL ;
 
 	// variables for threads
@@ -437,8 +443,8 @@ int main( int argc, char *argv[] )
 	//Store kmers(1000000000ull) ;
 	//Store trustedKmers(1000000000ull) ;
 	
-	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
-	Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	Store kmers( &cml ) ;
+	//Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 
 
 	if ( numOfThreads > 1 )
@@ -449,8 +455,6 @@ int main( int argc, char *argv[] )
 		threads = ( pthread_t * )malloc( sizeof( pthread_t ) * numOfThreads ) ;
 		pthread_mutex_init( &mutexSampleKmers, NULL ) ;
 		pthread_mutex_init( &mutexStoreKmers, NULL ) ;
-
-		trustedKmers.SetNumOfThreads( numOfThreads ) ;
 	}
 	
 	if ( ignoreQuality == false )
@@ -492,7 +496,6 @@ int main( int argc, char *argv[] )
 	size_t nuniq_kmer_count_seen = 0;
 	size_t nuniq_kmer_count_added = 0;
 	// It seems serialization is faster than parallel. NOT true now!
-	//std::map<uint64_t, int> hash ;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
