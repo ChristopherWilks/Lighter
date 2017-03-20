@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <map>
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -299,7 +300,7 @@ int main( int argc, char *argv[] )
 	SET_NEW_QUAL = -1 ;
 	kmerLength = -1 ;
 	numOfThreads = 1 ;
-	ignoreQuality = false ;
+	ignoreQuality = true ; //false
 	//stable = false ;
 	inferAlpha = false ;
 	zlibLevel = 1 ;
@@ -491,11 +492,12 @@ int main( int argc, char *argv[] )
 	size_t nuniq_kmer_count_seen = 0;
 	size_t nuniq_kmer_count_added = 0;
 	// It seems serialization is faster than parallel. NOT true now!
+	//std::map<uint64_t, int> hash ;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &nuniq_kmer_count_added, &nuniq_kmer_count_seen ) ;
+			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
 		}
 	}
 	else
@@ -532,6 +534,11 @@ int main( int argc, char *argv[] )
 	//how many have > 1 occurrence
 	reads.Rewind() ;
 	uint64_t total_count = 0;
+	total_count = kmers.uniq_kmers();
+	fprintf(stderr,"total_uniq_count #1: %lu\n",total_count);
+	total_count = kmers.uniq_kmers_gt_2();
+	fprintf(stderr,"total_uniq2_count #1: %lu\n",total_count);
+	total_count = 0;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )

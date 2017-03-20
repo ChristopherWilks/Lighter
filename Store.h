@@ -26,6 +26,8 @@ class Store
 {
 private:
 	uint64_t size ;
+	uint64_t uniq ;
+	uint64_t uniq2 ;
 	bloom_parameters bfpara ;
 	//bloom_filter bf ;
 	std::map<uint64_t, int> hash ;
@@ -44,94 +46,42 @@ private:
 		  return n;
 	}
 
-#if MAX_KMER_LENGTH <= 32 
 	int Put( uint64_t val, int kmerLength, bool testFirst )
 	{
-		//return 0 ;
-		//printf( "%d\n", method ) ;
-		//printf( "%llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		//printf( "%llu\n", val ) ;
-		//exit(1) ;
-		if ( method == 1 )
+		if(hash.find( val ) != hash.end())
 		{
-			hash[ val ] = 1 ;
-			return 1 ;
+			if(hash[ val ]==1)
+				uniq2+=1;
+			hash[ val ]+=1;
 		}
-
-		unsigned char valc[SF_LENGTH];	
-		int64ToChar(valc, val);
-
-		//if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
-		if ( testFirst && query( valc, SF_LENGTH ) > 0 )
-			return 0 ;
-		//bf.insert( val ) ;
-		inc(valc, SF_LENGTH, 1);
-		int c = query(valc, SF_LENGTH);
-		//printf("count of %d\n",c);
-		return 0 ;
+		else
+		{
+			uniq+=1;
+			hash[ val ]=1;
+		}
+		return 1;
 	}
 	
 	int IsIn( uint64_t val, int kmerLength ) 
 	{
-		//printf( "1. %llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		//printf( "2. %llu\n", val ) ;
-		if ( method == 1 )
+		if(hash.find( val ) != hash.end())
 		{
-			return ( hash.find( val ) != hash.end() ) ;
+			return hash.find( val )->second;
 		}
-		unsigned char valc[SF_LENGTH];	
-		int64ToChar(valc, val);
-
-		//return bf.contains( val ) ;
-		return query( valc, SF_LENGTH ) ;
+		return 0;
 	}
 
 	void decrease(uint64_t val, int kmerLength, uint64_t count)
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		unsigned char valc[SF_LENGTH];	
-		int64ToChar(valc, val);
-		
-		dec(valc, SF_LENGTH, count);
-	}
-#else
-	int Put( uint64_t code[], int kmerLength, bool testFirst )
-	{
-		//return 0 ;
-		//printf( "%d\n", method ) ;
-		//printf( "%llu\n", val ) ;
-		GetCanonicalKmerCode( code, kmerLength ) ;
-		//printf( "%llu\n", val ) ;
-		//exit(1) ;
-		if ( method == 1 )
+		if(hash.find( val ) != hash.end())
 		{
-			//hash[ val ] = 1 ;
-			return 1 ;
+			hash.erase(val);
 		}
-		
-		//printf( "1: %d\n", bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )  ;
-		if ( numOfThreads > 1 && testFirst && bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )
-			return 0 ;
-		//printf( "2: %lld %d\n", code[0], sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) )  ;
-		bf.insert( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) ) ;
-		//printf( "3: %d\n", bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )  ;
-		return 0 ;
+		return;
 	}
-
-	int IsIn( uint64_t code[], int kmerLength ) 
-	{
-		//printf( "1. %llu\n", val ) ;
-		GetCanonicalKmerCode( code, kmerLength ) ;
-		//printf( "2. %llu\n", val ) ;
-		if ( method == 1 )
-		{
-			//return ( hash.find( val ) != hash.end() ) ;
-		}
-		return bf.contains( ( char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) ) ;
-	}
-#endif 
 	int numOfThreads ;
 public:
 	Store( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate )//, bf( bfpara )
@@ -140,6 +90,8 @@ public:
 		method = 0 ;
 		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
 		init(D, W, Z, Bits_c);
+		uniq = 0;
+		uniq2 = 0;
 	}
 
 	Store( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate )//, bf( bfpara )  
@@ -148,6 +100,8 @@ public:
 		method = 0 ;
 		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
 		init(D, W, Z, Bits_c);
+		uniq = 0;
+		uniq2 = 0;
 	}
 
 	~Store() 
@@ -157,28 +111,17 @@ public:
 	double Occupancy()
 	{
 		return 0;
-		//return bf.occupancy() ;
 	}
 	double GetFP()
 	{
 		return 0;
-		
-		/*if ( method == 1 )
-			return 0 ;
-		return bf.GetActualFP() ;*/
 	}
 
 	void decrease(KmerCode code, uint64_t count)
 	{
 		if ( !code.IsValid() )
 			return;
-#if MAX_KMER_LENGTH <= 32 
 		decrease(code.GetCode(), code.GetKmerLength(), count);
-#else
-		uint64_t c[K_BLOCK_NUM] ;
-		code.GetCode( c ) ;
-		decrease(code.GetCode(), code.GetKmerLength(), count);
-#endif
 	}
 
 
@@ -186,13 +129,7 @@ public:
 	{
 		if ( !code.IsValid() )
 			return 0 ;
-#if MAX_KMER_LENGTH <= 32 
 		Put( code.GetCode(), code.GetKmerLength(), testFirst ) ;
-#else
-		uint64_t c[K_BLOCK_NUM] ;
-		code.GetCode( c ) ;
-		Put( c, code.GetKmerLength(), testFirst ) ;
-#endif
 		return 0 ;
 	}
 	
@@ -200,14 +137,11 @@ public:
 	{
 		if ( !code.IsValid() )
 			return 0 ;
-#if MAX_KMER_LENGTH <= 32 
 		return IsIn( code.GetCode(), code.GetKmerLength() ) ;
-#else
-		uint64_t c[K_BLOCK_NUM] ;
-		code.GetCode( c ) ;
-		return IsIn( c, code.GetKmerLength() ) ;
-#endif
 	}
+
+	uint64_t uniq_kmers() { return uniq; }
+	uint64_t uniq_kmers_gt_2() { return uniq2; }
 
 
 	void SetNumOfThreads( int in ) 
