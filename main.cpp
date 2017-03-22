@@ -439,7 +439,8 @@ int main( int argc, char *argv[] )
 	//Store trustedKmers(1000000000ull) ;
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
-	StoreSF trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	//StoreSF trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	StoreSF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 
 
 	if ( ignoreQuality == false )
@@ -466,7 +467,7 @@ int main( int argc, char *argv[] )
 	{
 		while ( reads.Next() != 0 )
 		{
-			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
+			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &kmerCounters, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
 		}
 	}
 
@@ -475,14 +476,14 @@ int main( int argc, char *argv[] )
 	double tableAFP = kmers.GetFP() ;
 	//how many have > 1 occurrence
 	uint64_t total_count = 0;
-	/*reads.Rewind() ;
+	reads.Rewind() ;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmers, 1) ;
+			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
 		}
-	}*/
+	}
 	//CW: I commented these out
 	/*for ( i = 1 ; i <= kmerLength ; ++i )
 	{

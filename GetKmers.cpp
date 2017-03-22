@@ -162,7 +162,7 @@ void *SampleKmers_Thread( void *arg )
 	return NULL ;
 }
 
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, size_t* kcount_added, size_t* kcount_seen )
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, StoreSF *kmerCounters, size_t* kcount_added, size_t* kcount_seen )
 {
 	int i ;
 	double p ;
@@ -180,8 +180,15 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 	p = rand() / (double)RAND_MAX ;
 	if ( p < alpha * factor )
 	{
-		*kcount_added+=1;
-		kmers->Put( kmerCode ) ;
+		if(kmers->IsIn(kmerCode))
+		{
+			kmerCounters->increase(kmerCode,1);
+		}
+		else
+		{
+			*kcount_added+=1;
+			kmers->Put( kmerCode ) ;
+		}
 	}
 
 	for ( ; read[i] ; ++i )
@@ -192,8 +199,15 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 		p = rand() / (double)RAND_MAX ;
 		if ( p < alpha * factor )
 		{
-			*kcount_added+=1;
-			kmers->Put( kmerCode ) ;
+			if(kmers->IsIn(kmerCode))
+			{
+				kmerCounters->increase(kmerCode,1);
+			}
+			else
+			{
+				*kcount_added+=1;
+				kmers->Put( kmerCode ) ;
+			}
 		}
 	}
 }
@@ -241,8 +255,8 @@ void *StoreKmers_Thread( void *arg )
 	return NULL ;
 }
 
-/*uint64_t CountKmers( char *read, char *qual, int kmerLength,
-	KmerCode &kmerCode, Store *kmers, int cutoff )
+uint64_t CountKmers( char *read, char *qual, int kmerLength,
+	KmerCode &kmerCode, StoreSF *kmers, int cutoff )
 {
 	int i ;
 	uint64_t total_count = 0;
@@ -272,7 +286,7 @@ void *StoreKmers_Thread( void *arg )
 		}
 	}
 	return total_count;
-}*/
+}
 
 
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,
