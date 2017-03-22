@@ -241,7 +241,7 @@ void *StoreKmers_Thread( void *arg )
 	return NULL ;
 }
 
-uint64_t CountKmers( char *read, char *qual, int kmerLength,
+/*uint64_t CountKmers( char *read, char *qual, int kmerLength,
 	KmerCode &kmerCode, Store *kmers, int cutoff )
 {
 	int i ;
@@ -272,7 +272,7 @@ uint64_t CountKmers( char *read, char *qual, int kmerLength,
 		}
 	}
 	return total_count;
-}
+}*/
 
 
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,
