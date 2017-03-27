@@ -59,8 +59,13 @@ private:
 		{
 			hash[ val ] = 1;
 		}
+		
+		if(c3 == 1 && c2 == 1)
+			uniq+=1;
+		if(c3 == 2 && c2 == 2)
+			uniq2+=1;
 
-		if(c2 > c3 && c3>=2)
+		/*if(c2 > c3 && c3>=2)
 		//if(c2 == c3)
 		{
 			uniq+=1;
@@ -69,7 +74,7 @@ private:
 		if(c2 == 1)
 		{
 			uniq2+=1;
-		}
+		}*/
 		/*else if(c2 == 0)
 		{
 			uniq+=1;
