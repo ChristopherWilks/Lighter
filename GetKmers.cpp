@@ -211,6 +211,40 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 		}
 	}
 }
+
+uint64_t CountKmers( char *read, char *qual, int kmerLength,
+	KmerCode &kmerCode, StoreSF *kmers, int cutoff )
+{
+	int i ;
+	uint64_t total_count = 0;
+
+	kmerCode.Restart() ;
+	for ( i = 0 ; i < kmerLength ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+	}
+	//CW note: do first kmer
+	int count = kmers->IsIn( kmerCode );
+	if(count > cutoff) {
+		total_count+=1;
+		kmers->decrease(kmerCode, count); 
+		//trustedKmers->Put( kmerCode, true ) ;
+	}
+
+	//CW note: then the rest
+	for ( ; read[i] ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+		count = kmers->IsIn( kmerCode );
+		if(count > cutoff) {
+			total_count+=1;
+			kmers->decrease(kmerCode, count); 
+			//trustedKmers->Put( kmerCode, true ) ;
+		}
+	}
+	return total_count;
+}
+
 void *StoreKmers_Thread( void *arg )
 {
 	struct _StoreKmersThreadArg *myArg = ( struct _StoreKmersThreadArg *)arg ; 	
@@ -255,38 +289,6 @@ void *StoreKmers_Thread( void *arg )
 	return NULL ;
 }
 
-uint64_t CountKmers( char *read, char *qual, int kmerLength,
-	KmerCode &kmerCode, StoreSF *kmers, int cutoff )
-{
-	int i ;
-	uint64_t total_count = 0;
-
-	kmerCode.Restart() ;
-	for ( i = 0 ; i < kmerLength ; ++i )
-	{
-		kmerCode.Append( read[i] ) ;
-	}
-	//CW note: do first kmer
-	int count = kmers->IsIn( kmerCode );
-	if(count > cutoff) {
-		total_count+=1;
-		kmers->decrease(kmerCode, count); 
-		//trustedKmers->Put( kmerCode, true ) ;
-	}
-
-	//CW note: then the rest
-	for ( ; read[i] ; ++i )
-	{
-		kmerCode.Append( read[i] ) ;
-		count = kmers->IsIn( kmerCode );
-		if(count > cutoff) {
-			total_count+=1;
-			kmers->decrease(kmerCode, count); 
-			//trustedKmers->Put( kmerCode, true ) ;
-		}
-	}
-	return total_count;
-}
 
 
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,

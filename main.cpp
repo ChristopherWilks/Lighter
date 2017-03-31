@@ -439,7 +439,6 @@ int main( int argc, char *argv[] )
 	//Store trustedKmers(1000000000ull) ;
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
-	//StoreSF trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 	StoreSF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 
 
