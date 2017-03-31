@@ -6,13 +6,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <map>
+#include <algorithm>
 
-#include "bloom_filter.hpp"
 #include "bf.h"
 #include "KmerCode.h"
-
-
-const static int SF_LENGTH=8;
 
 
 class StoreBF
@@ -24,6 +21,19 @@ private:
 	std::map<uint64_t, int> hash ;
 	int method ; //0-bloom filter. 1-std:map
 	bf::spectral_mi_bloom_filter cbf;
+	bf::spectral_mi_bloom_filter** filters;
+
+	int* sizes;
+	int* heights;
+	
+	int numOfThreads ;
+	int num_filters;
+
+	//all Morris approx. counting related code is adapted from the SF paper/codebase for CML
+	double morris_base;
+	uint64_t* limits;
+	std::default_random_engine generator;
+	std::uniform_real_distribution<double> distribution;
 
 
 	void increase(uint64_t val, int kmerLength, size_t count)
@@ -61,25 +71,76 @@ private:
 	        cbf.remove( val );	
 	}
 
-	int numOfThreads ;
-public:
-	StoreBF( double fprate = 0.01 ): size(10000003), cbf(bf::make_hasher(num_hashes), size, width)
+	bool morris_choice(int cur_count)
 	{
-		size = 10000003;
-		numOfThreads = 1 ;
-		method = 0 ;
-		//cbf = bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), size, width);
+		double r = distribution(generator);
+		double lim = pow(morris_base, -cur_count);
+		return r < lim;
 	}
 
-	StoreBF( uint64_t s, double fprate = 0.01 ): size(s), cbf(bf::make_hasher(num_hashes), size, width)
+	double morris_point_query(int cur_count)
 	{
+		return cur_count == 0 ? 0 : pow(morris_base, cur_count - 1);
+	}
+
+	bool tomb_insert(uint64_t val, int kmerLength)
+	{
+		int filter_layer = -1;
+		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		uint64_t count = tomb_query(val, 0, &filter_layer);
+		if(filter_layer == -1)
+			return false;
+		if(morris_choice(count))
+			filters[filter_layer]->add( val );
+		return true;
+	}
+
+	uint64_t tomb_query(uint64_t val, int kmerLength, int* filter_layer)
+	{
+		if(kmerLength > 0)
+			val = GetCanonicalKmerCode( val, kmerLength ) ;
+		uint64_t count = 0;
+		int i;
+		for(i=0;i<num_filters;i++)
+		{
+			size_t c = filters[i]->lookup( val );
+			if(c < limits[i])
+			{
+				*filter_layer = i;
+				return c;
+			}
+		}
+	}
+
+
+
+
+public:
+	//StoreBF( uint64_t s, double fprate = 0.01, int num_filters, int* sizes, int* widths ): size(s), cbf(bf::make_hasher(num_hashes), size, width)
+	StoreBF( uint64_t s, int num_filters_ = 4, double base = 1.08 ): size(s), num_filters(num_filters_), morris_base(base), cbf(bf::make_hasher(num_hashes), size, width)
+	{
+		int sizes_[4] = {1000,500,100,100};
+		int heigths_[4] = {1,4,4,4};
+
+		sizes = &sizes_[0];	
+		heights = &heigths_[0];
+
 		numOfThreads = 1 ;
 		method = 0 ;
+		filters = new bf::spectral_mi_bloom_filter*[num_filters];
+		limits = new uint64_t[num_filters];
+		int i;
+		for(i=0;i<num_filters;i++)
+		{
+			filters[i] = new bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), sizes[i], heights[i]);
+			limits[i] = pow(morris_base, heights[i]);
+		}
 		//cbf = bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), s, width);
 	}
 
 	~StoreBF() 
 	{
+		delete filters;
 	}
 	
 	double Occupancy()
@@ -118,6 +179,14 @@ public:
 		return 0 ;
 	}
 	
+	bool TOMB_Put( KmerCode &code ) 
+	{
+		if ( !code.IsValid() )
+			return 0 ;
+		return tomb_insert( code.GetCode(), code.GetKmerLength() ) ;
+	}
+	
+	
 	int IsIn( KmerCode &code ) 
 	{
 		if ( !code.IsValid() )
@@ -125,6 +194,22 @@ public:
 		return IsIn( code.GetCode(), code.GetKmerLength() ) ;
 	}
 
+	uint64_t TOMB_query( KmerCode &code )
+	{
+		if ( !code.IsValid() )
+			return 0 ;
+		int filter_layer = -1;
+		uint64_t count = tomb_query(code.GetCode(), code.GetKmerLength(), &filter_layer);
+		if(filter_layer == -1)
+			return -1;
+	//for querying with Morris, use SF:CML code:
+	//smallest_counter <= 1 ? morris_point_query(smallest_counter) : (int)(round((1 - morris_point_query(smallest_counter + 1)) / (1 - morris_base)));
+		uint64_t cur_layer_count = count <= 1 ? (uint64_t)morris_point_query(count) : (uint64_t)(round((1 - morris_point_query(count + 1)) / (1 - morris_base)));
+		//TODO: need to double check this update which takes the filter_layer(s) into consideration to get accurate count since each level is an order of magnitude
+		if(filter_layer > 0)
+			cur_layer_count += pow(morris_base, filter_layer);
+		return cur_layer_count;
+	}
 
 	void SetNumOfThreads( int in ) 
 	{ 
