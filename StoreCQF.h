@@ -68,8 +68,8 @@ public:
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
-		int qbits = 20; //# of distinct kmers dependent 
-		int r_bits = 8; //default from squeakr
+		int qbits = 25; //# of distinct kmers dependent //20 is example default
+		int r_bits = 17; //default from squeakr //8 is example default
 		int num_hash_bits = qbits + r_bits;	
 		uint32_t seed = time(NULL);
 		qf_init(&cqf, (1ULL<<qbits), num_hash_bits, 0, true, "", seed);
