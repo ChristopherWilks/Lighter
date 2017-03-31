@@ -8,6 +8,7 @@
 #include <map>
 
 #include "gqf.h"
+#include "hashutil.h"
 
 #include "KmerCode.h"
 
@@ -21,18 +22,21 @@ private:
 	void increase(uint64_t val, int kmerLength, uint64_t count)
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		qf_insert(&cqf, val, 0, count, false, false);
+		val = kmercounting::HashUtil::MurmurHash64A(((void*)&val), sizeof(val), cqf.metadata->seed);
+		qf_insert(&cqf, val % cqf.metadata->range, 0, count, false, false);
 	}
 
 	int Put( uint64_t val, int kmerLength, bool testFirst )
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		// hash the kmer using murmurhash/xxHash before adding to the list
+		val = kmercounting::HashUtil::MurmurHash64A(((void*)&val), sizeof(val), cqf.metadata->seed);
 		//if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
-		if ( numOfThreads > 1 && testFirst && qf_count_key_value(&cqf, val, 0))
+		if ( numOfThreads > 1 && testFirst && qf_count_key_value(&cqf, val % cqf.metadata->range, 0))
 			return 0 ;
 		//bf.insert( val ) ;
 		//insert/update the val as a cqf key with a count of 1, don't lock, don't spin
-		qf_insert(&cqf, val, 0, 1, false, false);
+		qf_insert(&cqf, val % cqf.metadata->range, 0, 1, false, false);
 		//int c = query(valc, SF_LENGTH);
 		//printf("count of %d\n",c);
 		return 1 ;
@@ -42,17 +46,19 @@ private:
 	{
 		//printf( "1. %llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		val = kmercounting::HashUtil::MurmurHash64A(((void*)&val), sizeof(val), cqf.metadata->seed);
 		//printf( "2. %llu\n", val ) ;
 		
 		//return bf.contains( val ) ;
 		//return qf_count_key_value(cqf, val, 0);
-		return qf_count_key_value(&cqf, val, 0);
+		return qf_count_key_value(&cqf, val % cqf.metadata->range, 0);
 	}
 
 
 	void decrease(uint64_t val, int kmerLength, uint64_t count)
 	{
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		val = kmercounting::HashUtil::MurmurHash64A(((void*)&val), sizeof(val), cqf.metadata->seed);
 		//qf_remove(&cqf, val, 0, count);	
 	}
 	
@@ -62,8 +68,8 @@ public:
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
-		int qbits = 23; //# of distinct kmers dependent 
-		int r_bits = 9; //default from squeakr
+		int qbits = 20; //# of distinct kmers dependent 
+		int r_bits = 8; //default from squeakr
 		int num_hash_bits = qbits + r_bits;	
 		uint32_t seed = time(NULL);
 		qf_init(&cqf, (1ULL<<qbits), num_hash_bits, 0, true, "", seed);

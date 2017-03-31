@@ -478,10 +478,11 @@ int main( int argc, char *argv[] )
 	reads.Rewind() ;
 	if ( numOfThreads == 1 )
 	{
-		while ( reads.Next() != 0 )
+		/*while ( reads.Next() != 0 )
 		{
 			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
-		}
+		}*/
+		total_count = CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
 	}
 	//CW: I commented these out
 	/*for ( i = 1 ; i <= kmerLength ; ++i )
