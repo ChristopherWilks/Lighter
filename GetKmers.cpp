@@ -162,7 +162,7 @@ void *SampleKmers_Thread( void *arg )
 	return NULL ;
 }
 
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, StoreSF *kmerCounters, size_t* kcount_added, size_t* kcount_seen )
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, StoreBF *kmerCounters, size_t* kcount_added, size_t* kcount_seen )
 {
 	int i ;
 	double p ;
@@ -256,7 +256,7 @@ void *StoreKmers_Thread( void *arg )
 }
 
 uint64_t CountKmers( char *read, char *qual, int kmerLength,
-	KmerCode &kmerCode, StoreSF *kmers, int cutoff )
+	KmerCode &kmerCode, StoreBF *kmers, int cutoff )
 {
 	int i ;
 	uint64_t total_count = 0;

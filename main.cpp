@@ -12,7 +12,7 @@
 
 #include "utils.h"
 #include "Store.h"
-#include "StoreSF.h"
+#include "StoreBF.h"
 #include "ErrorCorrection.h"
 #include "Reads.h"
 #include "KmerCode.h"
@@ -440,7 +440,7 @@ int main( int argc, char *argv[] )
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
 	//StoreSF trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
-	StoreSF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	StoreBF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
 
 
 	if ( ignoreQuality == false )
