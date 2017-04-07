@@ -89,7 +89,13 @@ private:
 		unsigned char valc[SF_LENGTH];	
 		int64ToChar(valc, val);
        		//return ((CMLSketch*) cml)->queryPoint(valc, SF_LENGTH);
-       		return cml->queryPoint(valc, SF_LENGTH);
+		if(hash.find( val ) != hash.end())
+		{
+			//remove so we don't count twice
+			hash.erase(val);
+       			return cml->queryPoint(valc, SF_LENGTH);
+		}
+		return 0;
 	}
 
 	int numOfThreads ;
