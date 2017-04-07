@@ -180,7 +180,7 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 	p = rand() / (double)RAND_MAX ;
 	if ( p < alpha * factor )
 	{
-		if(kmers->IsIn(kmerCode))
+		/*if(kmers->IsIn(kmerCode))
 		{
 			kmerCounters->increase(kmerCode,1);
 		}
@@ -188,7 +188,9 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 		{
 			*kcount_added+=1;
 			kmers->Put( kmerCode ) ;
-		}
+		}*/
+		*kcount_added+=1;
+		kmerCounters->TOMB_Put(kmerCode);
 	}
 
 	for ( ; read[i] ; ++i )
@@ -199,7 +201,7 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 		p = rand() / (double)RAND_MAX ;
 		if ( p < alpha * factor )
 		{
-			if(kmers->IsIn(kmerCode))
+			/*if(kmers->IsIn(kmerCode))
 			{
 				kmerCounters->increase(kmerCode,1);
 			}
@@ -207,7 +209,9 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 			{
 				*kcount_added+=1;
 				kmers->Put( kmerCode ) ;
-			}
+			}*/
+			*kcount_added+=1;
+			kmerCounters->TOMB_Put(kmerCode);
 		}
 	}
 }
@@ -267,10 +271,11 @@ uint64_t CountKmers( char *read, char *qual, int kmerLength,
 		kmerCode.Append( read[i] ) ;
 	}
 	//CW note: do first kmer
-	int count = kmers->IsIn( kmerCode );
+	//int count = kmers->IsIn( kmerCode );
+	uint64_t count = kmers->TOMB_query( kmerCode );
 	if(count > cutoff) {
 		total_count+=1;
-		kmers->decrease(kmerCode, count); 
+		//kmers->decrease(kmerCode, count); 
 		//trustedKmers->Put( kmerCode, true ) ;
 	}
 
@@ -278,10 +283,11 @@ uint64_t CountKmers( char *read, char *qual, int kmerLength,
 	for ( ; read[i] ; ++i )
 	{
 		kmerCode.Append( read[i] ) ;
-		count = kmers->IsIn( kmerCode );
+		//count = kmers->IsIn( kmerCode );
+		count = kmers->TOMB_query( kmerCode );
 		if(count > cutoff) {
 			total_count+=1;
-			kmers->decrease(kmerCode, count); 
+			//kmers->decrease(kmerCode, count); 
 			//trustedKmers->Put( kmerCode, true ) ;
 		}
 	}

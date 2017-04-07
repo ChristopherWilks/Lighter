@@ -26,7 +26,7 @@ private:
 	int* sizes;
 	int* heights;
 	
-	int numOfThreads ;
+	int numOfThreads;
 	int num_filters;
 
 	//all Morris approx. counting related code is adapted from the SF paper/codebase for CML
@@ -82,36 +82,58 @@ private:
 	{
 		return cur_count == 0 ? 0 : pow(morris_base, cur_count - 1);
 	}
+	
+	uint64_t tomb_query(uint64_t val, int kmerLength, int* filter_layer, bool unique=true)
+	{
+		if(kmerLength > 0)
+			val = GetCanonicalKmerCode( val, kmerLength ) ;
+		/*track for counting
+		if(hash.find( val ) != hash.end())
+			return 0;
+		hash[ val ] = 1;*/
+		int i;
+		uint64_t running_count = 0;
+		for(i=0;i<num_filters;i++)
+		{
+			//TODO: make sure this returns 0 for non-existing values
+			size_t c = filters[i]->lookup( val );
+			running_count += c;
+			if(c < limits[i])
+			{
+				*filter_layer = i;
+				break;
+			}
+		}
+		if(unique && hash.find( val ) != hash.end())
+		{
+			hash.erase(val);
+			return running_count;
+		}
+		else if(!unique)
+			return running_count;
+		return 0;
+	}
 
 	bool tomb_insert(uint64_t val, int kmerLength)
 	{
 		int filter_layer = -1;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		uint64_t count = tomb_query(val, 0, &filter_layer);
+		uint64_t count = tomb_query(val, 0, &filter_layer, false);
+		//all filled or there's a weird error
 		if(filter_layer == -1)
 			return false;
 		if(morris_choice(count))
 			filters[filter_layer]->add( val );
+		if(hash.find( val ) != hash.end())
+		{
+			hash[ val ] += 1;
+		}
+		else
+		{
+			hash[ val ] = 1;
+		}
 		return true;
 	}
-
-	uint64_t tomb_query(uint64_t val, int kmerLength, int* filter_layer)
-	{
-		if(kmerLength > 0)
-			val = GetCanonicalKmerCode( val, kmerLength ) ;
-		uint64_t count = 0;
-		int i;
-		for(i=0;i<num_filters;i++)
-		{
-			size_t c = filters[i]->lookup( val );
-			if(c < limits[i])
-			{
-				*filter_layer = i;
-				return c;
-			}
-		}
-	}
-
 
 
 
@@ -199,16 +221,19 @@ public:
 		if ( !code.IsValid() )
 			return 0 ;
 		int filter_layer = -1;
-		uint64_t count = tomb_query(code.GetCode(), code.GetKmerLength(), &filter_layer);
+		uint64_t running_count = tomb_query(code.GetCode(), code.GetKmerLength(), &filter_layer);
 		if(filter_layer == -1)
 			return -1;
 	//for querying with Morris, use SF:CML code:
 	//smallest_counter <= 1 ? morris_point_query(smallest_counter) : (int)(round((1 - morris_point_query(smallest_counter + 1)) / (1 - morris_base)));
-		uint64_t cur_layer_count = count <= 1 ? (uint64_t)morris_point_query(count) : (uint64_t)(round((1 - morris_point_query(count + 1)) / (1 - morris_base)));
 		//TODO: need to double check this update which takes the filter_layer(s) into consideration to get accurate count since each level is an order of magnitude
-		if(filter_layer > 0)
-			cur_layer_count += pow(morris_base, filter_layer);
-		return cur_layer_count;
+		//uint64_t cur_layer_count = count <= 1 ? (uint64_t)morris_point_query(count) : (uint64_t)(round((1 - morris_point_query(count + 1)) / (1 - morris_base)));
+		//if(filter_layer > 0)
+		//	cur_layer_count += pow(morris_base, filter_layer);
+		//THIS seems more in line with the Van Durme paper
+		//the counts across all layers' slots are simply added together *then* they're used as the morris exponent
+		uint64_t cur_count = running_count <= 1 ? (uint64_t)morris_point_query(running_count) : (uint64_t)(round((1 - morris_point_query(running_count + 1)) / (1 - morris_base)));
+		return cur_count;
 	}
 
 	void SetNumOfThreads( int in ) 
