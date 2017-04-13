@@ -1,6 +1,8 @@
 #include "BOBHash.h"
 
-uint32_t prime[MAX_PRIME] = {
+#define MAX_PRIME 1229
+
+uint prime[MAX_PRIME] = {
 	2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 	31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
 	73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
@@ -140,22 +142,37 @@ uint32_t prime[MAX_PRIME] = {
 	c -= a; c -= b; c ^= (b >> 15); \
 }
 
-uint32_t bobhash(uint32_t primeNum, const unsigned char * str, size_t len)
+BOBHash::BOBHash()
+{
+	this->primeNum = 0;
+}
+
+
+BOBHash::BOBHash(uint primeNum) {
+	this->primeNum = primeNum;
+}
+
+void BOBHash::initialize(uint primeNum) {
+	this->primeNum = primeNum;
+}
+
+
+uint BOBHash::run(const unsigned char * str, uint len)
 {
 	//register ub4 a,b,c,len;
-	uint32_t a,b,c;
+	uint a,b,c;
 	/* Set up the internal state */
 	//len = length;
 	a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
 
-	c = prime[primeNum];         /* the previous hash value */
+	c = prime[this->primeNum];         /* the previous hash value */
 
 	/*---------------------------------------- handle most of the key */
 	while (len >= 12)
 	{
-		a += (str[0] +((uint32_t)str[1]<<8) +((uint32_t)str[2]<<16) +((uint32_t)str[3]<<24));
-		b += (str[4] +((uint32_t)str[5]<<8) +((uint32_t)str[6]<<16) +((uint32_t)str[7]<<24));
-		c += (str[8] +((uint32_t)str[9]<<8) +((uint32_t)str[10]<<16)+((uint32_t)str[11]<<24));
+		a += (str[0] +((uint)str[1]<<8) +((uint)str[2]<<16) +((uint)str[3]<<24));
+		b += (str[4] +((uint)str[5]<<8) +((uint)str[6]<<16) +((uint)str[7]<<24));
+		c += (str[8] +((uint)str[9]<<8) +((uint)str[10]<<16)+((uint)str[11]<<24));
 		mix(a,b,c);
 		str += 12; len -= 12;
 	}
@@ -164,21 +181,25 @@ uint32_t bobhash(uint32_t primeNum, const unsigned char * str, size_t len)
 	c += len;
 	switch(len)              /* all the case statements fall through */
 	{
-		case 11: c+=((uint32_t)str[10]<<24);
-		case 10: c+=((uint32_t)str[9]<<16);
-		case 9 : c+=((uint32_t)str[8]<<8);
+		case 11: c+=((uint)str[10]<<24);
+		case 10: c+=((uint)str[9]<<16);
+		case 9 : c+=((uint)str[8]<<8);
 		/* the first byte of c is reserved for the length */
-		case 8 : b+=((uint32_t)str[7]<<24);
-		case 7 : b+=((uint32_t)str[6]<<16);
-		case 6 : b+=((uint32_t)str[5]<<8);
+		case 8 : b+=((uint)str[7]<<24);
+		case 7 : b+=((uint)str[6]<<16);
+		case 6 : b+=((uint)str[5]<<8);
 		case 5 : b+=str[4];
-		case 4 : a+=((uint32_t)str[3]<<24);
-		case 3 : a+=((uint32_t)str[2]<<16);
-		case 2 : a+=((uint32_t)str[1]<<8);
+		case 4 : a+=((uint)str[3]<<24);
+		case 3 : a+=((uint)str[2]<<16);
+		case 2 : a+=((uint)str[1]<<8);
 		case 1 : a+=str[0];
 		/* case 0: nothing left to add */
 	}
 	mix(a,b,c);
 	/*-------------------------------------------- report the result */
 	return c;
+}
+
+BOBHash::~BOBHash()
+{
 }
