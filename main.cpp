@@ -12,6 +12,7 @@
 
 #include "utils.h"
 #include "Store.h"
+#include "StoreCML.h"
 #include "ErrorCorrection.h"
 #include "Reads.h"
 #include "KmerCode.h"
@@ -19,7 +20,6 @@
 #include "pthread.h"
 #include "cmlsketch.h"
 #include "bench_common.h"
-
 
 
 char LIGHTER_VERSION[] = "Torch v0.1" ;
@@ -278,7 +278,8 @@ int main( int argc, char *argv[] )
 	//uint64_t mask ;
 	uint64_t genomeSize = 0;
 	struct _summary summary ;
-
+	
+	//CML PARAMS
 	size_t D=10,W=100000,Bits_c=16;
 	CMLSketch cml(D, W*4, Bits_c, 1.08, 255);
 
@@ -443,20 +444,10 @@ int main( int argc, char *argv[] )
 	//Store kmers(1000000000ull) ;
 	//Store trustedKmers(1000000000ull) ;
 	
-	Store kmers( &cml ) ;
-	//Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
+	StoreCML kmerCounters( &cml ) ;
 
 
-	if ( numOfThreads > 1 )
-	{
-		// Initialized pthread variables
-		pthread_attr_init( &pthreadAttr ) ;
-		pthread_attr_setdetachstate( &pthreadAttr, PTHREAD_CREATE_JOINABLE ) ;
-		threads = ( pthread_t * )malloc( sizeof( pthread_t ) * numOfThreads ) ;
-		pthread_mutex_init( &mutexSampleKmers, NULL ) ;
-		pthread_mutex_init( &mutexStoreKmers, NULL ) ;
-	}
-	
 	if ( ignoreQuality == false )
 		badQuality = GetBadQuality( reads ) ;
 	if ( badQuality != '\0' )
@@ -473,80 +464,29 @@ int main( int argc, char *argv[] )
 	// Step 1: Sample the kmers 
 	//printf( "Begin step1. \n" ) ; fflush( stdout ) ;
 	srand( 17 ) ;
-	// Build the patterns for sampling
-	if ( numOfThreads > 1 )
-	{
-		samplePatterns = ( struct _SamplePattern *)malloc( sizeof( *samplePatterns ) * SAMPLE_PATTERN_COUNT ) ;
-
-		for ( i = 0 ; i < SAMPLE_PATTERN_COUNT ; ++i )
-		{
-			int k ;
-			for ( k = 0 ; k < MAX_READ_LENGTH / 8 ; ++k )
-				samplePatterns[i].tag[k] = 0 ;
-			for ( k = 0 ; k < MAX_READ_LENGTH ; ++k )
-			{
-				double p = rand() / (double)RAND_MAX;
-				if ( p < alpha )
-				{
-					samplePatterns[i].tag[ k / 8 ] |= ( 1 << ( k % 8 ) ) ; // Notice within the small block, the order is reversed
-				}
-			}
-		}
-	}
 	size_t nuniq_kmer_count_seen = 0;
 	size_t nuniq_kmer_count_added = 0;
 	// It seems serialization is faster than parallel. NOT true now!
+	//std::map<uint64_t, int> hash ;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
+			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &kmerCounters, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
 		}
 	}
-	else
-	{
-		struct _SampleKmersThreadArg arg ;
-		void *pthreadStatus ;
-		kmers.SetNumOfThreads( numOfThreads ) ;
-
-		arg.kmerLength = kmerLength ;
-		arg.alpha = alpha ;
-		arg.kmers = &kmers ;
-		arg.samplePatterns = samplePatterns ;
-		// Since there is no output, so we can just directly read in the
-		// sequence without considering the order.
-		arg.reads = &reads ;
-		arg.lock = &mutexSampleKmers ;
-
-		for ( i = 0 ; i < numOfThreads / 2 ; ++i )
-		{
-			pthread_create( &threads[i], &pthreadAttr, SampleKmers_Thread, (void *)&arg ) ;	
-		}
-
-		for ( i = 0 ; i < numOfThreads / 2 ; ++i )
-		{
-			pthread_join( threads[i], &pthreadStatus ) ;
-		}
-	}
-	if ( numOfThreads > 1 )
-		free( samplePatterns ) ;
 
 	// Update the bloom filter's false positive rate.
 	// Compute the distribution of the # of sampled kmers from untrusted and trusted position
 	double tableAFP = kmers.GetFP() ;
 	//how many have > 1 occurrence
-	reads.Rewind() ;
 	uint64_t total_count = 0;
-	total_count = kmers.uniq_kmers();
-	fprintf(stderr,"total_uniq_count #1: %lu\n",total_count);
-	total_count = kmers.uniq_kmers_gt_2();
-	fprintf(stderr,"total_uniq2_count #1: %lu\n",total_count);
-	total_count = 0;
+	reads.Rewind() ;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmers, 1) ;
+			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
 		}
 	}
 	//CW: I commented these out
@@ -577,13 +517,22 @@ int main( int argc, char *argv[] )
 	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\ntotal # of kmers with > 1 occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, total_count ) ;
 	PrintLog( buffer ) ;
 
+	PrintLog( "Finish counting kmers" ) ;
 	//CW: start the 2nd step of using another DS here (for counting) 
 
 	// Step 2: Store counts of kmers kmers
 	//printf( "Begin step2.\n") ; fflush( stdout ) ;
-	//reads.Rewind() ;
-	PrintLog( "Finish counting kmers" ) ;
-
+	/*reads.Rewind() ;
+	if ( numOfThreads == 1 )
+	{
+		while ( reads.Next() )
+		{
+			StoreTrustedKmers( reads.seq, reads.qual, kmerLength, badQuality, threshold,
+					kmerCode, &kmers, &trustedKmers ) ;
+		}
+	}
+	PrintLog("Finished storing trusted kmers");*/
+	//do more counting here
 	//PrintSummary( summary ) ;
 	return 0 ;
 }

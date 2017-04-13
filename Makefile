@@ -17,7 +17,7 @@ all: torch
 torch: main.o $(OBJECTS)
 	$(CXX) -o $@ $(CXXFLAGS) $(OBJECTS) main.o $(LINKFLAGS)
 
-main.o: main.cpp utils.h Reads.h Store.h File.h KmerCode.h cmlsketch.h bloom_filter.hpp
+main.o: main.cpp utils.h Reads.h Store.h StoreCML.h File.h KmerCode.h cmlsketch.h bloom_filter.hpp
 ErrorCorrection.o: ErrorCorrection.cpp ErrorCorrection.h utils.h
 GetKmers.o: GetKmers.cpp GetKmers.h utils.h
 cmlsketch.o: cmlsketch.cpp cmlsketch.h bench_config.h bench_common.h define.h BOBHash.h

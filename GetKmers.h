@@ -10,6 +10,7 @@
 
 #include "Reads.h"
 #include "Store.h"
+#include "StoreCML.h"
 #include "KmerCode.h"
 #include "utils.h"
 
@@ -53,10 +54,10 @@ struct _StoreKmersThreadArg
 } ;
 
 void *SampleKmers_Thread( void *arg ) ;
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, size_t* kcount_added, size_t* kcount_seen ) ;
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers, StoreCML *kmerCounters, size_t* kcount_added, size_t* kcount_seen ) ;
 
 void *StoreKmers_Thread( void *arg ) ;
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,  
 	KmerCode &kmerCode, Store *kmers, Store *trustedKmers ) ;
-uint64_t CountKmers( char *read, char *qual, int kmerLength, KmerCode &kmerCode, Store *kmers, int cutoff );
+uint64_t CountKmers( char *read, char *qual, int kmerLength, KmerCode &kmerCode, StoreCML *kmerCounters, int cutoff );
 #endif

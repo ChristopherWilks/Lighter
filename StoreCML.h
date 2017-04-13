@@ -1,5 +1,5 @@
-#ifndef _MOURISL_CLASS_STORE
-#define _MOURISL_CLASS_STORE
+#ifndef _MOURISL_CLASS_STORECML
+#define _MOURISL_CLASS_STORECML
 /**
   The wrapper for bloom filters to store kmers.
 */
@@ -7,147 +7,139 @@
 #include <stdint.h>
 #include <map>
 
-#include "bloom_filter.hpp"
 #include "KmerCode.h"
+#include "cmlsketch.h"
+#include "bench_common.h"
+  		
 
-class Store
+const static int SF_LENGTH=8;
+
+
+class StoreCML
 {
 private:
 	uint64_t size ;
-	bloom_parameters bfpara ;
-	bloom_filter bf ;
+	uint64_t uniq ;
+	uint64_t uniq2 ;
+	//void *cml;
+	CMLSketch* cml;
+	//bloom_filter bf ;
 	std::map<uint64_t, int> hash ;
 	int method ; //0-bloom filter. 1-std:map
 
-#if MAX_KMER_LENGTH <= 32 
+	//following functions from:
+	//http://stackoverflow.com/questions/9695720/how-do-i-convert-a-64bit-integer-to-a-char-array-and-back
+	//needed it to convert from Lighter's uint64 to character array for SF sketch
+	void int64ToChar(unsigned char a[], int64_t n) {
+		  memcpy(a, &n, 8);
+	}
+
+	int64_t charTo64bitNum(unsigned char a[]) {
+		  int64_t n = 0;
+		  memcpy(&n, a, 8);
+		  return n;
+	}
+	
+	void increase(uint64_t val, int kmerLength, size_t count)
+	{
+		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+          	cml->insert(valc, SF_LENGTH, count);
+	}
+
 	int Put( uint64_t val, int kmerLength, bool testFirst )
 	{
-		//return 0 ;
-		//printf( "%d\n", method ) ;
-		//printf( "%llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		//printf( "%llu\n", val ) ;
-		//exit(1) ;
-		if ( method == 1 )
-		{
-			hash[ val ] = 1 ;
-			return 1 ;
-		}
-		
-		if ( numOfThreads > 1 && testFirst && bf.contains( val ) )
-			return 0 ;
-		bf.insert( val ) ;
-		return 0 ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+          	cml->insert(valc, SF_LENGTH, 1);
+		return 1;
 	}
-
-	int IsIn( uint64_t val, int kmerLength ) 
+	
+	size_t IsIn( uint64_t val, int kmerLength ) 
 	{
-		//printf( "1. %llu\n", val ) ;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
-		//printf( "2. %llu\n", val ) ;
-		if ( method == 1 )
-		{
-			return ( hash.find( val ) != hash.end() ) ;
-		}
-
-		return bf.contains( val ) ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+       		return cml->queryPoint(valc, SF_LENGTH);
 	}
-#else
-	int Put( uint64_t code[], int kmerLength, bool testFirst )
+	
+	size_t IsInExact( uint64_t val, int kmerLength ) 
 	{
-		//return 0 ;
-		//printf( "%d\n", method ) ;
-		//printf( "%llu\n", val ) ;
-		GetCanonicalKmerCode( code, kmerLength ) ;
-		//printf( "%llu\n", val ) ;
-		//exit(1) ;
-		if ( method == 1 )
+		val = GetCanonicalKmerCode( val, kmerLength ) ;
+		unsigned char valc[SF_LENGTH];	
+		int64ToChar(valc, val);
+		if(hash.find( val ) != hash.end())
 		{
-			//hash[ val ] = 1 ;
-			return 1 ;
+			//remove so we don't count twice
+			return 0;
 		}
-		
-		//printf( "1: %d\n", bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )  ;
-		if ( numOfThreads > 1 && testFirst && bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )
-			return 0 ;
-		//printf( "2: %lld %d\n", code[0], sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) )  ;
-		bf.insert( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) ) ;
-		//printf( "3: %d\n", bf.contains( (char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32  + 1 ) ) )  ;
-		return 0 ;
+		hash[ val ] = 1;
+       		return cml->queryPoint(valc, SF_LENGTH);
 	}
 
-	int IsIn( uint64_t code[], int kmerLength ) 
-	{
-		//printf( "1. %llu\n", val ) ;
-		GetCanonicalKmerCode( code, kmerLength ) ;
-		//printf( "2. %llu\n", val ) ;
-		if ( method == 1 )
-		{
-			//return ( hash.find( val ) != hash.end() ) ;
-		}
-		return bf.contains( ( char *)code, sizeof( uint64_t ) * ( ( kmerLength - 1 ) / 32 + 1 ) ) ;
-	}
-#endif 
 	int numOfThreads ;
 public:
-	Store( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate ), bf( bfpara )
+	StoreCML( CMLSketch* cml_ )
 	{
 		numOfThreads = 1 ;
+		cml = cml_;
 		method = 0 ;
+		uniq = 0;
+		uniq2 = 0;
 	}
 
-	Store( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate ), bf( bfpara )  
-	{
-		numOfThreads = 1 ;
-		method = 0 ;
-	}
-
-	~Store() 
+	~StoreCML() 
 	{
 	}
 	
 	double Occupancy()
 	{
-		return bf.occupancy() ;
+		return 0;
 	}
 	double GetFP()
 	{
-		if ( method == 1 )
-			return 0 ;
-		return bf.GetActualFP() ;
+		return 0;
 	}
+	
+	int increase(KmerCode &code, size_t count) 
+	{
+		if ( !code.IsValid() )
+			return 0 ;
+		increase(code.GetCode(), code.GetKmerLength(), count) ;
+	}
+
 	int Put( KmerCode &code, bool testFirst = false ) 
 	{
 		if ( !code.IsValid() )
 			return 0 ;
-#if MAX_KMER_LENGTH <= 32 
 		Put( code.GetCode(), code.GetKmerLength(), testFirst ) ;
-#else
-		uint64_t c[K_BLOCK_NUM] ;
-		code.GetCode( c ) ;
-		Put( c, code.GetKmerLength(), testFirst ) ;
-#endif
 		return 0 ;
 	}
-
+	
 	int IsIn( KmerCode &code ) 
 	{
 		if ( !code.IsValid() )
 			return 0 ;
-#if MAX_KMER_LENGTH <= 32 
 		return IsIn( code.GetCode(), code.GetKmerLength() ) ;
-#else
-		uint64_t c[K_BLOCK_NUM] ;
-		code.GetCode( c ) ;
-		return IsIn( c, code.GetKmerLength() ) ;
-#endif
 	}
+	
+	int IsInExact( KmerCode &code ) 
+	{
+		if ( !code.IsValid() )
+			return 0 ;
+		return IsInExact( code.GetCode(), code.GetKmerLength() ) ;
+	}
+
+	uint64_t uniq_kmers() { return uniq; }
+	uint64_t uniq_kmers_gt_2() { return uniq2; }
 
 
 	void SetNumOfThreads( int in ) 
 	{ 
 		numOfThreads = in ;
-		bf.SetNumOfThreads( in ) ;
+		//bf.SetNumOfThreads( in ) ;
 	}
 
 #if MAX_KMER_LENGTH <= 32 
@@ -213,14 +205,14 @@ public:
 	void TemporaryOutput( char *file)
 	{
 		FILE *fp = fopen( file, "w" ) ;
-		bf.Output( fp ) ;
+		//bf.Output( fp ) ;
 		fclose( fp ) ;
 	}
 
 	void TemporaryInput( char *file ) 
 	{
 		FILE *fp = fopen( file, "r" ) ;
-		bf.Input( fp ) ;
+		//bf.Input( fp ) ;
 		fclose( fp ) ;
 	}
 
