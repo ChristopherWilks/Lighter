@@ -50,7 +50,7 @@ private:
           	//((CMLSketch*) cml)->insert(valc, SF_LENGTH, 1);
 		size_t c2 = cml->queryPoint(valc, SF_LENGTH);
 		size_t c3 = 0;
-		if(hash.find( val ) != hash.end())
+		/*if(hash.find( val ) != hash.end())
 		{
 			c3=hash[ val ];
 			hash[ val ] += 1;
@@ -63,7 +63,7 @@ private:
 		if(c3 == 1 && c2 == 1)
 			uniq+=1;
 		if(c3 == 2 && c2 == 2)
-			uniq2+=1;
+			uniq2+=1;*/
 
 		/*if(c2 > c3 && c3>=2)
 		//if(c2 == c3)
@@ -92,10 +92,10 @@ private:
 		if(hash.find( val ) != hash.end())
 		{
 			//remove so we don't count twice
-			hash.erase(val);
-       			return cml->queryPoint(valc, SF_LENGTH);
+			return 0;
 		}
-		return 0;
+		hash[ val ] = 1;
+       		return cml->queryPoint(valc, SF_LENGTH);
 	}
 
 	int numOfThreads ;
