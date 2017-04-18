@@ -73,7 +73,12 @@ void PrintHelp()
 		"\t-noQual: ignore the quality socre (default: false)\n"
 		"\t-newQual ascii_quality_score: set the quality for the bases corrected to the specified score (default: not used)\n"
 		"\t-h: print the help message and quit\n"
-		"\t-v: print the version information and quit\n") ;
+		"\t-v: print the version information and quit\n"
+		"\t-d num_arrays\n"
+		"\t-w num_buckets\n"
+		"\t-z F sketch bucket multiplier\n"
+		"\t-b number of bits per counter\n");
+
 }
 
 uint64_t StringToUint64( char *s )   
@@ -258,6 +263,7 @@ void *Output_Thread( void *arg )
 
 int main( int argc, char *argv[] )
 {
+	size_t narrays=5, nbuckets=4000, z=3, bits_per_counter=8*sizeof(size_t);
 	int kmerLength ;
 	double alpha = -1 ;
 	//char *readId/**, read, *qual*/ ;
@@ -316,6 +322,27 @@ int main( int argc, char *argv[] )
 			//reads.AddReadFile( argv[i + 1 ] ) ;
 			++i;
 			continue ; // wait to be processed after next round
+		}
+		else if ( !strcmp( "-d", argv[i] ) )
+		{
+			narrays = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-w", argv[i] ) )
+		{
+			nbuckets = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-z", argv[i] ) )
+		{
+			z = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-b", argv[i] ) )
+		{
+			bits_per_counter = atoi( argv[i + 1] );
+			++i ;
+			bits_per_counter *= sizeof(size_t);
 		}
 		else if ( !strcmp( "-k", argv[i] ) )
 		{
@@ -435,11 +462,11 @@ int main( int argc, char *argv[] )
 	PrintLog( buffer ) ;
 	
 	// Prepare data structures and other data.
-	//Store kmers(1000000000ull) ;
-	//Store trustedKmers(1000000000ull) ;
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
-	StoreSF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	//StoreSF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+	//StoreSF kmerCounters();
+	StoreSF kmerCounters( narrays, nbuckets, z, bits_per_counter );
 
 
 	if ( ignoreQuality == false )

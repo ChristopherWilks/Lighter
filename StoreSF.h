@@ -134,19 +134,16 @@ private:
 #endif 
 	int numOfThreads ;
 public:
-	StoreSF( double fprate = 0.01 ): size( 10000003 ), bfpara( 10000003, fprate )//, bf( bfpara )
+	//uses paper defaults
+	StoreSF( size_t D=5, size_t W=4000, size_t Z=3, size_t Bits_c=8*sizeof(size_t) )
 	{
+		//D=# of arrays in both S and F
+		//W=# of buckets in S
+		//W'=Z x W where W' is # of buckets in F
+		//Bits_c = # of bits per counter in F
 		numOfThreads = 1 ;
 		method = 0 ;
-		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
-		init(D, W, Z, Bits_c);
-	}
-
-	StoreSF( uint64_t s, double fprate = 0.01 ): size( s ), bfpara( s, fprate )//, bf( bfpara )  
-	{
-		numOfThreads = 1 ;
-		method = 0 ;
-		size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
+		//size_t D=5,W=40000,Z=3,Bits_c=8*sizeof(size_t);
 		init(D, W, Z, Bits_c);
 	}
 
