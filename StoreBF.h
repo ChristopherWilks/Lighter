@@ -138,15 +138,15 @@ private:
 
 
 public:
-	//StoreBF( uint64_t s, double fprate = 0.01, int num_filters, int* sizes, int* widths ): size(s), cbf(bf::make_hasher(num_hashes), size, width)
-	StoreBF( uint64_t s, int num_filters_ = 4, double base = 1.08 ): size(s), num_filters(num_filters_), morris_base(base), cbf(bf::make_hasher(num_hashes), size, width)
+	StoreBF( uint64_t s, int num_filters, int* sizes_, int* heights_, double base = 1.08 ): size(s), cbf(bf::make_hasher(num_hashes), size, width), sizes(sizes_), heights(heights_)
+	//StoreBF( uint64_t s, int num_filters_ = 4, double base = 1.08 ): size(s), num_filters(num_filters_), morris_base(base), cbf(bf::make_hasher(num_hashes), size, width)
 	{
-		int sizes_[4] = {1000,500,100,100};
-		int heigths_[4] = {1,4,4,4};
+		/*int sizes_[4] = {1000,500,100,100};
+		int heigths_[4] = {1,4,4,4}
 
 		sizes = &sizes_[0];	
-		heights = &heigths_[0];
-
+		heights = &heigths_[0];*/
+		fprintf(stderr,"num_filters %d base %f\n",num_filters,base);
 		numOfThreads = 1 ;
 		method = 0 ;
 		filters = new bf::spectral_mi_bloom_filter*[num_filters];
@@ -154,6 +154,7 @@ public:
 		int i;
 		for(i=0;i<num_filters;i++)
 		{
+			fprintf(stderr,"size %d height %d\n",sizes[i],heights[i]);
 			filters[i] = new bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), sizes[i], heights[i]);
 			limits[i] = pow(morris_base, heights[i]);
 		}

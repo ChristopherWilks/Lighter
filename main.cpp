@@ -73,7 +73,11 @@ void PrintHelp()
 		"\t-noQual: ignore the quality socre (default: false)\n"
 		"\t-newQual ascii_quality_score: set the quality for the bases corrected to the specified score (default: not used)\n"
 		"\t-h: print the help message and quit\n"
-		"\t-v: print the version information and quit\n") ;
+		"\t-v: print the version information and quit\n"
+		"\t-d number of filters/layers\n"
+		"\t-w numbers of counters per filter/layer (comma delimited)\n"
+		"\t-b numbers of bits per counter (heights) per filter/layer (comma delimited)\n"
+		"\t-e base of Morris exponent\n");
 }
 
 uint64_t StringToUint64( char *s )   
@@ -258,6 +262,15 @@ void *Output_Thread( void *arg )
 
 int main( int argc, char *argv[] )
 {
+	int num_filters=4;
+	char sizes__[]="10000,5000,1000,1000";
+	char* sizes_ = &sizes__[0];
+	char heights__[]="1,4,4,4";
+	char* heights_ = &heights__[0];
+	/*int sizes[num_filters] = {10000,5000,1000,1000};
+	int heights[num_filters] = {1,4,4,4};*/
+	double mbase = 1.08;
+
 	int kmerLength ;
 	double alpha = -1 ;
 	//char *readId/**, read, *qual*/ ;
@@ -316,6 +329,26 @@ int main( int argc, char *argv[] )
 			//reads.AddReadFile( argv[i + 1 ] ) ;
 			++i;
 			continue ; // wait to be processed after next round
+		}
+		else if ( !strcmp( "-d", argv[i] ) )
+		{
+			num_filters = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-w", argv[i] ) )
+		{
+			sizes_ = argv[i + 1];
+			++i ;
+		}
+		else if ( !strcmp( "-e", argv[i] ) )
+		{
+			mbase = (double)atof( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-b", argv[i] ) )
+		{
+			heights_ =  argv[i + 1];
+			++i ;
 		}
 		else if ( !strcmp( "-k", argv[i] ) )
 		{
@@ -435,12 +468,27 @@ int main( int argc, char *argv[] )
 	}
 
 	// Prepare data structures and other data.
-	//Store kmers(1000000000ull) ;
-	//Store trustedKmers(1000000000ull) ;
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
-	//StoreSF trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
-	StoreBF kmerCounters((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;
+
+	int* sizes = (int*)calloc(num_filters,sizeof(int));
+	int* heights = (int*)calloc(num_filters,sizeof(int));
+	char* size_ = strtok(sizes_,",");
+	int m = 0;
+	while(size_ != NULL)
+	{
+		//assert_lt(m,num_filters);
+		sizes[m++]=atoi(size_);	
+		size_ = strtok(NULL,",");
+	}
+	m = 0;
+	char* height_ = strtok(heights_,",");
+	while(height_ != NULL)
+	{
+		heights[m++]=atoi(height_);
+		height_ = strtok(NULL,",");
+	}
+	StoreBF kmerCounters(1, num_filters, sizes, heights, mbase);
 
 
 	if ( ignoreQuality == false )
