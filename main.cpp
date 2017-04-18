@@ -428,12 +428,12 @@ int main( int argc, char *argv[] )
 		PrintLog( "Scanning the input files to infer alpha(sampling rate)" ) ;
 		alpha = InferAlpha( reads, genomeSize ) ;
 		
-		sprintf( buffer, "Average coverage is %.3lf and alpha is %.3lf", 7.0 / alpha, alpha ) ;
-		PrintLog( buffer ) ;
 		
 		reads.Rewind() ;
 	}
-
+	sprintf( buffer, "Average coverage is %.3lf and alpha is %.3lf", 7.0 / alpha, alpha ) ;
+	PrintLog( buffer ) ;
+	
 	// Prepare data structures and other data.
 	//Store kmers(1000000000ull) ;
 	//Store trustedKmers(1000000000ull) ;
@@ -462,11 +462,16 @@ int main( int argc, char *argv[] )
 	size_t nuniq_kmer_count_added = 0;
 	// It seems serialization is faster than parallel. NOT true now!
 	//std::map<uint64_t, int> hash ;
+	int reads_seen = 0;
+	int REPORT_FREQ=50000;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
 			SampleKmersInRead( reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmers, &kmerCounters, &nuniq_kmer_count_added, &nuniq_kmer_count_seen) ;
+			reads_seen++;
+			if(reads_seen % REPORT_FREQ == 0)
+				fprintf(stderr,"%d reads processed\n",reads_seen);
 		}
 	}
 
@@ -476,11 +481,18 @@ int main( int argc, char *argv[] )
 	//how many have > 1 occurrence
 	uint64_t total_count = 0;
 	reads.Rewind() ;
+	reads_seen = 0;
+	//this is the storeSF cutoff which is always the true cutoff - 1
+	//because we use the original BF as count=1
+	int cutoff = 0;
 	if ( numOfThreads == 1 )
 	{
 		while ( reads.Next() != 0 )
 		{
-			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
+			total_count += CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, cutoff) ;
+			reads_seen++;
+			if(reads_seen % REPORT_FREQ == 0)
+				fprintf(stderr,"%d reads counted\n",reads_seen);
 		}
 	}
 	//CW: I commented these out
@@ -508,7 +520,7 @@ int main( int argc, char *argv[] )
 	}*/
 	PrintLog( "Finish sampling kmers" ) ;
 		
-	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\ntotal # of kmers with > 1 occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, total_count ) ;
+	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nmostly-unique K-mers added %lu\ntotal # of kmers with > %d occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, cutoff+1, total_count ) ;
 	PrintLog( buffer ) ;
 
 	PrintLog( "Finish counting kmers" ) ;
