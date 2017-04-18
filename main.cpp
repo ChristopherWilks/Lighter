@@ -75,7 +75,12 @@ void PrintHelp()
 		"\t-noQual: ignore the quality socre (default: false)\n"
 		"\t-newQual ascii_quality_score: set the quality for the bases corrected to the specified score (default: not used)\n"
 		"\t-h: print the help message and quit\n"
-		"\t-v: print the version information and quit\n") ;
+		"\t-v: print the version information and quit\n"
+		"\t-d num_arrays\n"
+		"\t-w num_buckets\n"
+		"\t-e base of Morris exponent\n"
+		"\t-c upper limit on counter value\n"
+		"\t-b number of bits per counter\n");
 }
 
 uint64_t StringToUint64( char *s )   
@@ -260,6 +265,10 @@ void *Output_Thread( void *arg )
 
 int main( int argc, char *argv[] )
 {
+	//CML PARAMS
+	size_t narrays=10, nbuckets=100000, bits_per_counter=16, climit=255;
+	double e=1.08;
+	
 	int kmerLength ;
 	double alpha = -1 ;
 	//char *readId/**, read, *qual*/ ;
@@ -279,9 +288,6 @@ int main( int argc, char *argv[] )
 	uint64_t genomeSize = 0;
 	struct _summary summary ;
 	
-	//CML PARAMS
-	size_t D=10,W=100000,Bits_c=16;
-	CMLSketch cml(D, W*4, Bits_c, 1.08, 255);
 
 	struct _SamplePattern *samplePatterns = NULL ;
 
@@ -322,6 +328,31 @@ int main( int argc, char *argv[] )
 			//reads.AddReadFile( argv[i + 1 ] ) ;
 			++i;
 			continue ; // wait to be processed after next round
+		}
+		else if ( !strcmp( "-d", argv[i] ) )
+		{
+			narrays = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-w", argv[i] ) )
+		{
+			nbuckets = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-e", argv[i] ) )
+		{
+			e = (double)atof( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-c", argv[i] ) )
+		{
+			climit = atoi( argv[i + 1] );
+			++i ;
+		}
+		else if ( !strcmp( "-b", argv[i] ) )
+		{
+			bits_per_counter = atoi( argv[i + 1] );
+			++i ;
 		}
 		else if ( !strcmp( "-k", argv[i] ) )
 		{
@@ -441,10 +472,9 @@ int main( int argc, char *argv[] )
 	}
 
 	// Prepare data structures and other data.
-	//Store kmers(1000000000ull) ;
-	//Store trustedKmers(1000000000ull) ;
 	
 	Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
+	CMLSketch cml(narrays, nbuckets*4, bits_per_counter, e, climit);
 	StoreCML kmerCounters( &cml ) ;
 
 
