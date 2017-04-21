@@ -180,18 +180,18 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 	p = rand() / (double)RAND_MAX ;
 	if ( p < alpha * factor )
 	{
-		/*if(kmers->IsIn(kmerCode))
+		if(kmers->IsIn(kmerCode))
 		{
-			kmerCounters->increase(kmerCode,1);
+			//kmerCounters->increase(kmerCode,1);
+			bool added = kmerCounters->TOMB_Put(kmerCode);
+			/*if(added)
+				*kcount_added+=1;*/
 		}
 		else
 		{
 			*kcount_added+=1;
 			kmers->Put( kmerCode ) ;
-		}*/
-		bool added = kmerCounters->TOMB_Put(kmerCode);
-		if(added)
-			*kcount_added+=1;
+		}
 	}
 
 	for ( ; read[i] ; ++i )
@@ -202,19 +202,18 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 		p = rand() / (double)RAND_MAX ;
 		if ( p < alpha * factor )
 		{
-			/*if(kmers->IsIn(kmerCode))
+			if(kmers->IsIn(kmerCode))
 			{
-				kmerCounters->increase(kmerCode,1);
+				//kmerCounters->increase(kmerCode,1);
+				bool added = kmerCounters->TOMB_Put(kmerCode);
+				if(added)
+					*kcount_added+=1;
 			}
 			else
 			{
 				*kcount_added+=1;
 				kmers->Put( kmerCode ) ;
-			}*/
-			bool added = kmerCounters->TOMB_Put(kmerCode);
-			if(added)
-				*kcount_added+=1;
-
+			}
 		}
 	}
 }
