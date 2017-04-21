@@ -108,7 +108,8 @@ private:
 				fprintf(stderr,"still -1\n");
 			}
 		}
-		if(unique && hash.find( val ) != hash.end())
+		//if(unique && hash.find( val ) != hash.end())
+		if(unique && hash[ val ] > 0)
 		{
 			hash.erase(val);
 			return running_count;
@@ -118,7 +119,7 @@ private:
 		return 0;
 	}
 
-	bool tomb_insert(uint64_t val, int kmerLength)
+	bool tomb_insert(uint64_t val, int kmerLength, bool unique=true)
 	{
 		int filter_layer = -1;
 		val = GetCanonicalKmerCode( val, kmerLength ) ;
@@ -135,11 +136,12 @@ private:
 			filters[filter_layer]->add( val );
 			added = true;
 		}
-		if(hash.find( val ) != hash.end())
+		//if(unique && hash.find( val ) != hash.end())
+		if(unique && hash[ val ] > 0)
 		{
 			hash[ val ] += 1;
 		}
-		else
+		else if(unique)
 		{
 			hash[ val ] = 1;
 		}
