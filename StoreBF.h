@@ -103,6 +103,10 @@ private:
 				*filter_layer = i;
 				break;
 			}
+			else if(i==num_filters-1)
+			{
+				fprintf(stderr,"still -1\n");
+			}
 		}
 		if(unique && hash.find( val ) != hash.end())
 		{
@@ -121,9 +125,16 @@ private:
 		uint64_t count = tomb_query(val, 0, &filter_layer, false);
 		//all filled or there's a weird error
 		if(filter_layer == -1)
+		{
+			fprintf(stderr,"weird error returning false in tomb_insert\n");
 			return false;
+		}
+		bool added = false;
 		if(morris_choice(count))
+		{
 			filters[filter_layer]->add( val );
+			added = true;
+		}
 		if(hash.find( val ) != hash.end())
 		{
 			hash[ val ] += 1;
@@ -132,13 +143,13 @@ private:
 		{
 			hash[ val ] = 1;
 		}
-		return true;
+		return added;
 	}
 
 
 
 public:
-	StoreBF( uint64_t s, int num_filters, int* sizes_, int* heights_, double base = 1.08 ): size(s), cbf(bf::make_hasher(num_hashes), size, width), sizes(sizes_), heights(heights_)
+	StoreBF( uint64_t s, int num_filters, int* sizes_, int* heights_, double base = 1.08 ): size(s), cbf(bf::make_hasher(num_hashes), size, width), sizes(sizes_), heights(heights_), num_filters(num_filters), morris_base(base)
 	//StoreBF( uint64_t s, int num_filters_ = 4, double base = 1.08 ): size(s), num_filters(num_filters_), morris_base(base), cbf(bf::make_hasher(num_hashes), size, width)
 	{
 		/*int sizes_[4] = {1000,500,100,100};
@@ -156,7 +167,8 @@ public:
 		{
 			fprintf(stderr,"size %d height %d\n",sizes[i],heights[i]);
 			filters[i] = new bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), sizes[i], heights[i]);
-			limits[i] = pow(morris_base, heights[i]);
+			//limits[i] = pow(morris_base, heights[i]);
+			limits[i] = pow(2, heights[i]);
 		}
 		//cbf = bf::spectral_mi_bloom_filter(bf::make_hasher(num_hashes), s, width);
 	}

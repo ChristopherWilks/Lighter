@@ -189,8 +189,9 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 			*kcount_added+=1;
 			kmers->Put( kmerCode ) ;
 		}*/
-		*kcount_added+=1;
-		kmerCounters->TOMB_Put(kmerCode);
+		bool added = kmerCounters->TOMB_Put(kmerCode);
+		if(added)
+			*kcount_added+=1;
 	}
 
 	for ( ; read[i] ; ++i )
@@ -210,8 +211,10 @@ void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, Km
 				*kcount_added+=1;
 				kmers->Put( kmerCode ) ;
 			}*/
-			*kcount_added+=1;
-			kmerCounters->TOMB_Put(kmerCode);
+			bool added = kmerCounters->TOMB_Put(kmerCode);
+			if(added)
+				*kcount_added+=1;
+
 		}
 	}
 }
