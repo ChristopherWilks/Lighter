@@ -10,6 +10,7 @@
 
 #include "Reads.h"
 #include "Store.h"
+#include "StoreCQF.h"
 #include "KmerCode.h"
 #include "utils.h"
 
@@ -29,7 +30,7 @@ struct _SampleKmersThreadArg
 	int kmerLength ;
 	double alpha ;
 	//int batchSize ;
-	Store *kmers ; 
+	StoreCQF *kmers ; 
 	Reads *reads ;
 
 	struct _SamplePattern *samplePatterns ;
@@ -43,8 +44,8 @@ struct _StoreKmersThreadArg
 	int kmerLength ;
 	//int batchSize ;
 	int *threshold ;
-	Store *kmers ;
-	Store *trustedKmers ;
+	StoreCQF *kmers ;
+	StoreCQF *trustedKmers ;
 	Reads *reads ;
 	char goodQuality ;
 	char badQuality ;
@@ -53,9 +54,9 @@ struct _StoreKmersThreadArg
 } ;
 
 void *SampleKmers_Thread( void *arg ) ;
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, Store *kmers ) ;
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreCQF *kmers ) ;
 
 void *StoreKmers_Thread( void *arg ) ;
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,  
-	KmerCode &kmerCode, Store *kmers, Store *trustedKmers ) ;
+	KmerCode &kmerCode, StoreCQF *kmers, StoreCQF *trustedKmers ) ;
 #endif
