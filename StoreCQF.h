@@ -18,6 +18,10 @@ private:
 	std::map<uint64_t, int> hash ;
 	int method ; //0-bloom filter. 1-std:map
 	QF cqf;
+	int qbits;
+	int rbits;
+	uint64_t num_hash_bits;
+	uint64_t n_unique_kmers;
 
 	void increase(uint64_t val, int kmerLength, uint64_t count)
 	{
@@ -68,9 +72,19 @@ public:
 	{
 		numOfThreads = 1 ;
 		method = 0 ;
-		int qbits = 25; //# of distinct kmers dependent //20 is example default
-		int r_bits = 17; //default from squeakr //8 is example default
-		int num_hash_bits = qbits + r_bits;	
+		qbits = 25; //# of distinct kmers dependent //20 is example default
+		rbits = 17; //default from squeakr //8 is example default
+		num_hash_bits = qbits + rbits;
+		n_unique_kmers = (uint64_t) pow(2.0, 30.0);
+		uint32_t seed = time(NULL);
+		qf_init(&cqf, (1ULL<<qbits), num_hash_bits, 0, true, "", seed);
+	}
+	
+	StoreCQF(int qbits_, int rbits_, uint64_t n_unique_kmers_): qbits(qbits_), rbits(rbits_), n_unique_kmers(n_unique_kmers_)
+	{
+		numOfThreads = 1 ;
+		method = 0 ;
+		num_hash_bits = qbits + rbits;	
 		uint32_t seed = time(NULL);
 		qf_init(&cqf, (1ULL<<qbits), num_hash_bits, 0, true, "", seed);
 	}
@@ -88,8 +102,12 @@ public:
 
 	double GetFP()
 	{
-		return 0;
-		
+		//return 0;
+		return (double)(n_unique_kmers/(pow(2.0,num_hash_bits)));
+		//use p = lg2 (n/FP)
+		//so FP = n/(2^p)
+		//n=# of expected insertions
+		//p=# bits of hash function: p = q+r	
 		/*if ( method == 1 )
 			return 0 ;
 		return bf.GetActualFP() ;*/
