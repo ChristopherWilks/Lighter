@@ -466,7 +466,7 @@ int main( int argc, char *argv[] )
 	/*Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
 	Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;*/
 	StoreCQF kmers;
-	StoreCQF trustedKmers;
+	//StoreCQF trustedKmers;
 
 
 	if ( numOfThreads > 1 )
@@ -479,7 +479,7 @@ int main( int argc, char *argv[] )
 		pthread_mutex_init( &mutexStoreKmers, NULL ) ;
 
 		//kmers.SetNumOfThreads( numOfThreads ) ;
-		trustedKmers.SetNumOfThreads( numOfThreads ) ;
+		//trustedKmers.SetNumOfThreads( numOfThreads ) ;
 	}
 	
 	//goodQuality = GetGoodQuality( reads ) ;
@@ -644,6 +644,8 @@ int main( int argc, char *argv[] )
 	}
 	// Step 2: Store the trusted kmers
 	//printf( "Begin step2.\n") ; fflush( stdout ) ;
+	//skip this for CQF
+	/*
 	reads.Rewind() ;
 	if ( numOfThreads == 1 )
 	{
@@ -677,7 +679,7 @@ int main( int argc, char *argv[] )
 			pthread_join( threads[i], &pthreadStatus ) ;
 		}
 	}
-	PrintLog( "Finish storing trusted kmers" ) ;
+	PrintLog( "Finish storing trusted kmers" ) ;*/
 
 	//trustedKmers.TemporaryInput( "bf.out ") ;
 	//trustedKmers.TemporaryOutput( "bf.out ") ;
@@ -717,7 +719,7 @@ int main( int argc, char *argv[] )
 			}
 			continue ;*/
 			int info ;
-			int tmp = ErrorCorrection_Wrapper( reads.seq, reads.qual, kmerCode, badQuality, &trustedKmers, badPrefix, badSuffix, info ) ;
+			int tmp = ErrorCorrection_Wrapper( reads.seq, reads.qual, kmerCode, badQuality, &kmers, badPrefix, badSuffix, info ) ;
 
 			//if ( reads.HasQuality() )
 			//	
@@ -741,7 +743,7 @@ int main( int argc, char *argv[] )
 		pthread_mutex_init( &errorCorrectionLock, NULL ) ;
 
 		arg.kmerLength = kmerLength ;
-		arg.trustedKmers = &trustedKmers ;
+		arg.trustedKmers = &kmers ;
 		arg.readBatch = readBatch ;
 		arg.lock = &errorCorrectionLock ;
 		arg.badQuality = badQuality ;
@@ -791,7 +793,7 @@ int main( int argc, char *argv[] )
 		pthread_mutex_init( &errorCorrectionLock, NULL ) ;
 
 		arg.kmerLength = kmerLength ;
-		arg.trustedKmers = &trustedKmers ;
+		arg.trustedKmers = &kmers ;
 		//arg.readBatch = readBatch ;
 		arg.lock = &errorCorrectionLock ;
 		arg.badQuality = badQuality ;
