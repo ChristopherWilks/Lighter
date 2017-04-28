@@ -1,5 +1,6 @@
 #include "ErrorCorrection.h"
 #include <string.h>
+#include <map>
 
 //#define DEBUG 
 
@@ -8,6 +9,10 @@ extern char numToNuc[26] ;
 extern int MAX_CORRECTION ;
 extern bool ALLOW_TRIMMING ;
 extern int SET_NEW_QUAL ;
+//how small a count difference for a candidate corrected kmer vs. an original bad kmer
+int const static MIN_DIFF_CUTOFF=3;
+//how much to allow the candidate corrected kmers to differ from the anchoring good fixed kmer
+int const static ABS_MAX_DIFF_CUTOFF=1;
 
 void *ErrorCorrection_Thread( void *arg )
 {
@@ -193,10 +198,25 @@ int CreateAnchor( char *read, char *qual, int *fix, bool *storedKmer, KmerCode &
 	return maxLenStats[0] ;
 }
 
+bool check_kmer_trust_status(KmerCode& origKmerCode, KmerCode& newKmerCode, StoreCQF *kmers, bool checking_for_trusted, std::map<uint64_t, uint64_t> kmerCounts, bool fixed)
+{
+	uint64_t new_count = kmers->IsIn( newKmerCode );
+	int diff = new_count - kmerCounts[ origKmerCode.GetCode() ];
+	int abs_diff = abs(diff);
+	if ( checking_for_trusted )
+		return fixed ? abs_diff <= ABS_MAX_DIFF_CUTOFF : diff >= MIN_DIFF_CUTOFF;
+		//return kmers->IsIn( newKmerCode )
+	return fixed ? abs_diff > ABS_MAX_DIFF_CUTOFF : diff < MIN_DIFF_CUTOFF;
+	//return !kmers->IsIn( newKmerCode )
+}
+
 int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrection, char badQuality, StoreCQF *kmers, int &badPrefix, int &badSuffix, int &info )
 {
 	int i, j, k ;	
 	bool storedKmer[MAX_READ_LENGTH] ;
+	//CW: track original kmer counts for diff computation
+	std::map<uint64_t, uint64_t> kmerCounts ;
+	//uint64_t kmerCounts[MAX_READ_LENGTH];
 	int kmerCnt = 0 ;
 	int readLength = 0 ;
 	int fix[MAX_READ_LENGTH] ; // The fixed character for each untrusted position.
@@ -224,7 +244,9 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 	{
 		kmerCode.Append( read[i] ) ;
 	}
-	if ( !kmers->IsIn( kmerCode ) )
+	uint64_t kcount = kmers->IsIn( kmerCode );
+	kmerCounts[0] = kcount;
+	if ( !kcount )
 		storedKmer[0] = false ;
 	else
 	{
@@ -236,7 +258,9 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 	{
 		kmerCode.Append( read[i] ) ;
 
-		if ( !kmers->IsIn( kmerCode ) )
+		kcount = kmers->IsIn( kmerCode );
+		kmerCounts[ kmerCode.GetCode() ] = kcount;
+		if ( !kcount )
 			storedKmer[ kmerCnt ] = false ;
 		else
 		{
@@ -257,6 +281,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 	for ( i = 0 ; i < readLength ; ++i )
 		trusted[i] = false ;
 	tag = -1 ;
+	//TODO change this to not trust simple presence of all kmers?
+	//this marks all kmers within window of last good tag(?) as trusted
 	for ( i = 0 ; i < kmerCnt ; ++i )
 	{
 		if ( storedKmer[i] )
@@ -297,6 +323,7 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 #endif
 	//exit( 1 ) ;
 	// All the kmers are reliable. 
+	//TODO change this to not trust simple presence of all kmers?
 	for ( i = 0 ; i < kmerCnt ; ++i )
 	{
 		if ( storedKmer[i] == false )
@@ -391,14 +418,16 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 				tmpKmerCode = kmerCode ;
 				tmpKmerCode.ShiftRight() ;
 				tmpKmerCode.Append( numToNuc[c] ) ;
-				if ( kmers->IsIn( tmpKmerCode ) ) 
+				if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, true, kmerCounts, false) ) 
 				{	
 					// Test whether this branch makes sense
 					int t = 0 ;
 					for ( t = 0 ; t < kmerLength && read[i + t] ; ++t ) // and it is should be a very good fix 
 					{
 						tmpKmerCode.Append( read[i + t] ) ;
-						if ( !kmers->IsIn( tmpKmerCode ) )
+						//new_count = kmers->IsIn( tmpKmerCode );
+						//if ( new_count - kmerCounts[ kmerCode.GetCode() ] < DIFF_CUTOFF )
+						if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, false, kmerCounts, false) ) 
 							break ;
 					}
 					if ( !read[i + t] || t >= kmerLength )
@@ -421,6 +450,7 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 					int c ;
 					KmerCode tmpKmerCode( kmerLength ) ;
 
+					int orig_kmer_index = k - j - 1;
 					for ( i = k - j - 1 ; i < k - j + kmerLength - 1 ; ++i )
 						kmerCode.Append( read[i] ) ;
 					//printf( "%d %d %c\n", j, i, read[i - 1] ) ;
@@ -431,7 +461,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 						tmpKmerCode = kmerCode ;
 						tmpKmerCode.ShiftRight() ;
 						tmpKmerCode.Append( numToNuc[c] ) ;
-						if ( kmers->IsIn( tmpKmerCode ) ) 
+						if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, true, kmerCounts, false) ) 
+						//if ( kmers->IsIn( tmpKmerCode ) ) 
 						{	
 							++alternativeCnt ;
 							// Test whether this branch makes sense
@@ -439,7 +470,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 							for ( t = 0 ; t <= kmerLength / 2 && read[i + t] ; ++t ) // and it is should be a very good fix 
 							{
 								tmpKmerCode.Append( read[i + t] ) ;
-								if ( !kmers->IsIn( tmpKmerCode ) )
+								if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, false, kmerCounts, false) ) 
+								//if ( !kmers->IsIn( tmpKmerCode ) )
 									break ;
 							}
 							if ( t > kmerLength / 2 )
@@ -485,7 +517,10 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 			kmerCode = fixedKmerCode ;
 			kmerCode.Append( numToNuc[j] ) ;
 			//printf( "?code=%llu\n", kmerCode.GetCode() ) ;
-			if ( !kmers->IsIn( kmerCode ) )
+			//TODO not sure what to do here? because I don't know what the original kmer is to compare to
+			//is it fixedKmerCode? doesn't seem like it should be given the name, but it's not kmerCode
+			if ( check_kmer_trust_status(fixedKmerCode, kmerCode, kmers, false, kmerCounts, true) ) 
+			//if ( !kmers->IsIn( kmerCode ) )
 				continue ;
 			
 			if ( maxTo == -1 )
@@ -495,7 +530,9 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 			for ( k = from ; k <= to ; ++k )
 			{
 				kmerCode.Append( read[k] ) ;
-				if ( !kmers->IsIn( kmerCode ) )
+				//TODO again don't know which original kmer to compare to?
+				if ( check_kmer_trust_status(fixedKmerCode, kmerCode, kmers, false, kmerCounts, true) ) 
+				//if ( !kmers->IsIn( kmerCode ) )
 					break ;
 			}
 			
@@ -509,7 +546,9 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 					{
 						KmerCode tmpKmerCode( kmerCode ) ;
 						tmpKmerCode.Append( numToNuc[l] ) ;
-						if ( kmers->IsIn( tmpKmerCode ) )
+						//TODO again don't know which original kmer to compare to?
+						if ( check_kmer_trust_status(fixedKmerCode, tmpKmerCode, kmers, false, kmerCounts, true) ) 
+						//if ( kmers->IsIn( tmpKmerCode ) )
 							break ;
 					}
 
@@ -675,14 +714,16 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 				tmpKmerCode = kmerCode ;
 				tmpKmerCode.Append( 'A' ) ;
 				tmpKmerCode.Prepend( numToNuc[c] ) ;
-				if ( kmers->IsIn( tmpKmerCode ) ) 
+				if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, true, kmerCounts, false) ) 
+				//if ( kmers->IsIn( tmpKmerCode ) ) 
 				{	
 					// Test whether this branch makes sense
 					int t = 0 ;
 					for ( t = 0 ; t <= kmerLength - 1 && tag + j - t - 1 >= 0 ; ++t ) // and it is should be a very good fix 
 					{
 						tmpKmerCode.Prepend( read[tag + j - t - 1] ) ;
-						if ( !kmers->IsIn( tmpKmerCode ) )
+						if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, false, kmerCounts, false) ) 
+						//if ( !kmers->IsIn( tmpKmerCode ) )
 							break ;
 					}
 					if ( t > kmerLength - 1 || tag + j -t -1 < 0 )
@@ -716,7 +757,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 						tmpKmerCode = kmerCode ;
 						tmpKmerCode.Append( 'A' ) ;
 						tmpKmerCode.Prepend( numToNuc[c] ) ;
-						if ( kmers->IsIn( tmpKmerCode ) ) 
+						if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, true, kmerCounts, false) ) 
+						//if ( kmers->IsIn( tmpKmerCode ) ) 
 						{
 							++alternativeCnt ;
 							// Test whether this branch makes sense
@@ -724,7 +766,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 							for ( t = 0 ; t <= kmerLength / 2 && tag + j - t - 1 >= 0 ; ++t ) // and it is should be a very good fix 
 							{
 								tmpKmerCode.Prepend( read[tag + j - t - 1] ) ;
-								if ( !kmers->IsIn( tmpKmerCode ) )
+								if ( check_kmer_trust_status(kmerCode, tmpKmerCode, kmers, false, kmerCounts, false) ) 
+								//if ( !kmers->IsIn( tmpKmerCode ) )
 									break ;
 							}
 							if ( t > kmerLength / 2 )
@@ -768,7 +811,9 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 			
 			//printf( "2.%llu\n", kmerCode.GetCode() ) ;
 			//printf( "%d %lld %lld\n", j, (long long int)kmerCode, (long long int)fixedKmerCode ) ;
-			if ( !kmers->IsIn( kmerCode ) )
+			//TODO once again do we use fixedKmerCode here or not do anything at all?
+			if ( check_kmer_trust_status(fixedKmerCode, kmerCode, kmers, false, kmerCounts, true) ) 
+			//if ( !kmers->IsIn( kmerCode ) )
 				continue ;
 			if ( minTo == tag + 1 )
 				minTo = i ;
@@ -778,7 +823,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 			for ( k = from ; k >= to ; --k )
 			{
 				kmerCode.Prepend( read[k] ) ;	
-				if ( !kmers->IsIn( kmerCode ) )
+				if ( check_kmer_trust_status(fixedKmerCode, kmerCode, kmers, false, kmerCounts, true) ) 
+				//if ( !kmers->IsIn( kmerCode ) )
 					break ;
 			}
 
@@ -792,7 +838,8 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 					{
 						KmerCode tmpKmerCode( kmerCode ) ;
 						tmpKmerCode.Prepend( numToNuc[l] ) ;
-						if ( kmers->IsIn( tmpKmerCode ) )
+						if ( check_kmer_trust_status(fixedKmerCode, tmpKmerCode, kmers, false, kmerCounts, true) ) 
+						//if ( kmers->IsIn( tmpKmerCode ) )
 							break ;
 					}
 
