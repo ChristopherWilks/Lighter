@@ -43,7 +43,7 @@ void *ErrorCorrection_Thread( void *arg )
 // If we could not find an anchor, it is mostly likely there are errors in every kmer.
 // We will try to find 1 position that can create a stretch of stored kmers.
 // return-which position is changed. -1: failed
-int CreateAnchor( char *read, char *qual, int *fix, bool *storedKmer, KmerCode &kmerCode, StoreCQF *kmers )
+int CreateAnchor( char *read, char *qual, int *fix, bool *storedKmer, KmerCode &kmerCode, StoreBF *kmers )
 {
 	int readLength = strlen( read ) ;	
 	int kmerLength = kmerCode.GetKmerLength() ; 
@@ -193,7 +193,7 @@ int CreateAnchor( char *read, char *qual, int *fix, bool *storedKmer, KmerCode &
 	return maxLenStats[0] ;
 }
 
-int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrection, char badQuality, StoreCQF *kmers, int &badPrefix, int &badSuffix, int &info )
+int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrection, char badQuality, StoreBF *kmers, int &badPrefix, int &badSuffix, int &info )
 {
 	int i, j, k ;	
 	bool storedKmer[MAX_READ_LENGTH] ;
@@ -1098,7 +1098,7 @@ int ErrorCorrection( char *read, char *qual, KmerCode& kmerCode, int maxCorrecti
 	return ret ;
 }
 
-int ErrorCorrection_Wrapper( char *read, char *qual, KmerCode& kmerCode, char badQuality, StoreCQF *kmers, int &badPrefix, int &badSuffix, int &info )
+int ErrorCorrection_Wrapper( char *read, char *qual, KmerCode& kmerCode, char badQuality, StoreBF *kmers, int &badPrefix, int &badSuffix, int &info )
 {
 	int correction ;
 	int tmpBadPrefix, tmpBadSuffix, tmpInfo ;

@@ -16,7 +16,7 @@
 #include "KmerCode.h"
 #include "GetKmers.h"
 #include "pthread.h"
-#include "StoreCQF.h"
+#include "StoreBF.h"
 
 
 char LIGHTER_VERSION[] = "Lighter v1.1.1" ;
@@ -465,8 +465,8 @@ int main( int argc, char *argv[] )
 	//Store trustedKmers(1000000000ull) ;
 	/*Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
 	Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;*/
-	StoreCQF kmers;
-	StoreCQF trustedKmers;
+	StoreBF kmers;
+	StoreBF trustedKmers;
 
 
 	if ( numOfThreads > 1 )
