@@ -2,7 +2,7 @@
 
 struct _SampleKmersPutThreadArg
 {
-	StoreBF *kmers ;
+	StoreCUCKOO *kmers ;
 	KmerCode *kmerCodes ;
 	int kmerCodesCnt ;
 
@@ -12,7 +12,7 @@ struct _SampleKmersPutThreadArg
 void *SampleKmers_PutThread( void *arg )
 {
 	struct _SampleKmersPutThreadArg *myArg = ( struct _SampleKmersPutThreadArg * )arg ;
-	StoreBF *kmers = myArg->kmers ;
+	StoreCUCKOO *kmers = myArg->kmers ;
 	int i ;
 	//pthread_mutex_lock( myArg->lockPut ) ;
 	for ( i = 0 ; i < myArg->kmerCodesCnt ; ++i )
@@ -35,7 +35,7 @@ void *SampleKmers_Thread( void *arg )
 	KmerCode kmerCode( kmerLength ) ;
 
 	//double p ;
-	StoreBF *kmers = myArg->kmers ;
+	StoreCUCKOO *kmers = myArg->kmers ;
 	//double factor = 1.0 ;
 	const int bufferSizeFactor = 9 ;
 	KmerCode *kmerCodeBuffer[2] ; //[ ( bufferSizeFactor + 1 )* MAX_READ_LENGTH] ;
@@ -181,7 +181,7 @@ void *SampleKmers_Thread( void *arg )
 	return NULL ;
 }
 
-void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreBF *kmers )
+void SampleKmersInRead( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreCUCKOO *kmers )
 {
 	int i ;
 	double p ;
@@ -293,7 +293,7 @@ void *StoreKmers_Thread( void *arg )
 }
 
 void StoreTrustedKmers( char *read, char *qual, int kmerLength, char badQuality, int *threshold,
-	KmerCode &kmerCode, StoreBF *kmers, StoreBF *trustedKmers )
+	KmerCode &kmerCode, StoreCUCKOO *kmers, StoreCUCKOO *trustedKmers )
 {
 	bool occur[MAX_READ_LENGTH] ;
 	bool trustedPosition[MAX_READ_LENGTH] ;

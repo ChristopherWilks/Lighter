@@ -4,14 +4,14 @@
 #include <stdio.h>
 
 #include "Store.h"
-#include "StoreBF.h"
+#include "StoreCUCKOO.h"
 #include "KmerCode.h"
 #include "Reads.h"
 
 struct _ErrorCorrectionThreadArg
 {
 	int kmerLength ;
-	StoreBF *trustedKmers ;
+	StoreCUCKOO *trustedKmers ;
 	struct _Read *readBatch ;
 	int batchSize ;
 	int batchUsed ;
@@ -26,6 +26,6 @@ void *ErrorCorrection_Thread( void *arg ) ;
 
 //@ return:0: this read is correct. -1-this read is unfixable. Otherwise, return the number 
 // of corrected positions.
-int ErrorCorrection_Wrapper( char *read, char *qual, KmerCode& kmerCode, char badQuality, StoreBF *kmers, int &badPrefix, int &badSuffix, int &info ) ;
+int ErrorCorrection_Wrapper( char *read, char *qual, KmerCode& kmerCode, char badQuality, StoreCUCKOO *kmers, int &badPrefix, int &badSuffix, int &info ) ;
 
 #endif
