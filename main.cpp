@@ -16,7 +16,9 @@
 #include "KmerCode.h"
 #include "GetKmers.h"
 #include "pthread.h"
-#include "StoreBF.h"
+#include "StoreCML.h"
+#include "cmlsketch.h"
+#include "bench_common.h"
 
 
 char LIGHTER_VERSION[] = "Lighter v1.1.1" ;
@@ -279,6 +281,11 @@ int main( int argc, char *argv[] )
 	//uint64_t mask ;
 	uint64_t genomeSize = 0;
 	struct _summary summary ;
+	
+	//CML PARAMS
+	size_t D=10,W=100000,Bits_c=16;
+	CMLSketch cml(D, W*4, Bits_c, 1.08, 255);
+	CMLSketch trustedCML(D, W*4, Bits_c, 1.08, 255);
 
 	struct _SamplePattern *samplePatterns = NULL ;
 	bool setMaxCor ;
@@ -465,8 +472,8 @@ int main( int argc, char *argv[] )
 	//Store trustedKmers(1000000000ull) ;
 	/*Store kmers((uint64_t)( genomeSize * 1.5 ), 0.01 ) ;
 	Store trustedKmers((uint64_t)( genomeSize * 1.5 ), 0.0005 ) ;*/
-	StoreBF kmers;
-	StoreBF trustedKmers;
+	StoreCML kmers ( &cml );
+	StoreCML trustedKmers ( &trustedCML );
 
 
 	if ( numOfThreads > 1 )
