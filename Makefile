@@ -3,7 +3,7 @@ CX = gcc
 CXXFLAGS= -Wall -O0 #-O3
 C_FLAGS= -std=c99 -Wall -Werror -pedantic -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls
 C_DEFINES = "-DSFF=1"
-LINKFLAGS = -lpthread -lz 
+LINKFLAGS = -lpthread -lz -lrt
 DEBUG=
 OBJECTS = BOBHash.o sketch_config.o sffsketch.o ErrorCorrection.o GetKmers.o
 
@@ -12,11 +12,15 @@ ifneq (,$(findstring MINGW,$(shell uname)))
 	LINKFLAGS = -L. -lpthreadGC2
 endif
 
-all: torch
+all: torch torchq
 
 torch: main.o $(OBJECTS)
 	$(CXX) -o $@ $(CXXFLAGS) $(OBJECTS) main.o $(LINKFLAGS)
 
+torchq: mainq.o $(OBJECTS)
+	$(CXX) -o $@ $(CXXFLAGS) $(OBJECTS) mainq.o $(LINKFLAGS)
+
+mainq.o: mainq.cpp utils.h Reads.h Store.h StoreSF.h File.h KmerCode.h sketch.h bloom_filter.hpp
 main.o: main.cpp utils.h Reads.h Store.h StoreSF.h File.h KmerCode.h sketch.h bloom_filter.hpp
 ErrorCorrection.o: ErrorCorrection.cpp ErrorCorrection.h utils.h
 GetKmers.o: GetKmers.cpp GetKmers.h utils.h
@@ -28,4 +32,4 @@ BOBHash.o: BOBHash.c BOBHash.h
 	$(CX) $(C_DEFINES) $(C_FLAGS) -o BOBHash.o -c BOBHash.c
 
 clean:
-	rm -f *.o *.gch lighter torch
+	rm -f *.o *.gch lighter torch torchq

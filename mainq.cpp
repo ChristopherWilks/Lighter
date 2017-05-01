@@ -506,7 +506,7 @@ int main( int argc, char *argv[] )
 	// Compute the distribution of the # of sampled kmers from untrusted and trusted position
 	double tableAFP = kmers.GetFP() ;
 	//how many have > 1 occurrence
-	uint64_t total_count = 0;
+	/*uint64_t total_count = 0;
 	reads.Rewind() ;
 	reads_seen = 0;
 	//this is the storeSF cutoff which is always the true cutoff - 1
@@ -521,7 +521,7 @@ int main( int argc, char *argv[] )
 			if(reads_seen % REPORT_FREQ == 0)
 				fprintf(stderr,"%d reads counted\n",reads_seen);
 		}
-	}
+	}*/
 	//CW: I commented these out
 	/*for ( i = 1 ; i <= kmerLength ; ++i )
 	{
@@ -547,11 +547,52 @@ int main( int argc, char *argv[] )
 	}*/
 	PrintLog( "Finish sampling kmers" ) ;
 		
-	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nmostly-unique K-mers added %lu\ntotal # of kmers with > %d occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, cutoff+1, total_count ) ;
-	PrintLog( buffer ) ;
-
-	PrintLog( "Finish counting kmers" ) ;
+	//sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nmostly-unique K-mers added %lu\ntotal # of kmers with > %d occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, cutoff+1, total_count ) ;
 	//CW: start the 2nd step of using another DS here (for counting) 
 
+	// Step 2: Store counts of kmers kmers
+	printf( "Begin step 3: query timings.\n") ; fflush( stdout ) ;
+	reads.Rewind() ;
+	uint64_t seen = 0;	
+	if ( numOfThreads == 1 )
+	{
+		struct timespec tstart;
+		struct timespec tend;
+		clock_gettime(CLOCK_MONOTONIC, &tstart);
+		while ( reads.Next() )
+		{
+			//StoreTrustedKmers( reads.seq, reads.qual, kmerLength, badQuality, threshold,
+			//		kmerCode, &kmers, &trustedKmers ) ;
+			query_kmers_in_read(reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmerCounters, &seen);	
+		}
+		//gettimeofday(&tend, NULL);
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		//double tdiff1 = tend.tv_sec-tstart.tv_sec;
+		//uint64_t tdiff1 = (tend.tv_nsec-tstart.tv_nsec);
+		//cur.tv_nsec = (tend.tv_nsec-tstart.tv_nsec);
+		//double tdiff2 = tdiff1/100000000.0;
+		//fprintf(stderr,"query_time %u %.3f\n",tdiff1,(double)(tdiff1/1000000000.0));
+		//fprintf(stderr,"query_time %ul %.3f\n",tdiff1,tdiff2);
+		//fprintf(stderr,"query_time %.3f %lu\n",cur.tv_nsec/1000000000.0,cur.tv_nsec);
+		//fprintf(stderr,"query_time %.3f %lu\n",cur.tv_nsec/1000000000.0,cur.tv_nsec);
+		struct timespec cur;
+		cur.tv_sec = (tend.tv_sec-tstart.tv_sec);
+		fprintf(stderr,"query_time %u\n",cur.tv_sec);
+		//fprintf(stderr,"query_time %u\n",tdiff1);
+	}
+	fprintf(stderr,"Finished query running time tests; saw %u kmers\n",seen);
+	//printf( "Begin step2.\n") ; fflush( stdout ) ;
+	/*reads.Rewind() ;
+	if ( numOfThreads == 1 )
+	{
+		while ( reads.Next() )
+		{
+			StoreTrustedKmers( reads.seq, reads.qual, kmerLength, badQuality, threshold,
+					kmerCode, &kmers, &trustedKmers ) ;
+		}
+	}
+	PrintLog("Finished storing trusted kmers");*/
+	//do more counting here
+	//PrintSummary( summary ) ;
 	return 0 ;
 }

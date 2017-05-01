@@ -7,6 +7,44 @@ struct _SampleKmersPutThreadArg
 	int kmerCodesCnt ;
 } ;
 
+void query_kmers_in_read( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreSF *kmerCounters, size_t* kcount_seen )
+{
+	int i ;
+	double p ;
+	double factor = 1 ;
+	kmerCode.Restart() ;
+	for ( i = 0 ; i < kmerLength && read[i] ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+	}
+
+	if ( i < kmerLength )
+		return ;
+
+	p = rand() / (double)RAND_MAX ;
+	if ( p < alpha * factor )
+	{
+		if(kmerCounters->IsIn(kmerCode))
+		{
+			*kcount_seen+=1;
+		}
+	}
+
+	for ( ; read[i] ; ++i )
+	{
+		kmerCode.Append( read[i] ) ;
+
+		p = rand() / (double)RAND_MAX ;
+		if ( p < alpha * factor )
+		{
+			if(kmerCounters->IsIn(kmerCode))
+			{
+				*kcount_seen+=1;
+			}
+		}
+	}
+}
+
 //CW note: actually stores the kmers (via kmerCode) into the bloom filter
 void *SampleKmers_PutThread( void *arg )
 {

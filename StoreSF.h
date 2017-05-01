@@ -135,7 +135,7 @@ private:
 	int numOfThreads ;
 public:
 	//uses paper defaults
-	StoreSF( size_t D=5, size_t W=4000, size_t Z=3, size_t Bits_c=8*sizeof(size_t) )
+	StoreSF( size_t D=5, size_t W=40000, size_t Z=3, size_t Bits_c=8*sizeof(size_t) )
 	{
 		//D=# of arrays in both S and F
 		//W=# of buckets in S
