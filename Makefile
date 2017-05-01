@@ -5,6 +5,7 @@ C_FLAGS= -std=c99 -Wall -Werror -pedantic -Wmissing-prototypes -Wmissing-declara
 C_DEFINES = "-DSFF=1"
 LINKFLAGS = -lpthread -lz 
 DEBUG=
+ARCH=
 OBJECTS = gqf.o hashutil.o ErrorCorrection.o GetKmers.o
 
 # For Windows pthreads library: http://www.sourceware.org/pthreads-win32/
