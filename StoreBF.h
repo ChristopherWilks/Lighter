@@ -224,19 +224,20 @@ public:
 	}
 	
 	
-	int IsIn( KmerCode &code ) 
+	uint64_t IsIn( KmerCode &code ) 
 	{
 		if ( !code.IsValid() )
 			return 0 ;
-		return IsIn( code.GetCode(), code.GetKmerLength() ) ;
+		//return IsIn( code.GetCode(), code.GetKmerLength() ) ;
+		return TOMB_query( code, false );
 	}
 
-	uint64_t TOMB_query( KmerCode &code )
+	uint64_t TOMB_query( KmerCode &code, bool unique=true)
 	{
 		if ( !code.IsValid() )
 			return 0 ;
 		int filter_layer = -1;
-		uint64_t running_count = tomb_query(code.GetCode(), code.GetKmerLength(), &filter_layer);
+		uint64_t running_count = tomb_query(code.GetCode(), code.GetKmerLength(), &filter_layer, unique);
 		if(filter_layer == -1)
 			return -1;
 	//for querying with Morris, use SF:CML code:
