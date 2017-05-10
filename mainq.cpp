@@ -515,6 +515,7 @@ int main( int argc, char *argv[] )
 	printf( "Begin step 3: query timings.\n") ; fflush( stdout ) ;
 	reads.Rewind() ;
 	uint64_t seen = 0;	
+	uint64_t total = 0;	
 	if ( numOfThreads == 1 )
 	{
 		struct timespec tstart;
@@ -524,7 +525,7 @@ int main( int argc, char *argv[] )
 		{
 			//StoreTrustedKmers( reads.seq, reads.qual, kmerLength, badQuality, threshold,
 			//		kmerCode, &kmers, &trustedKmers ) ;
-			query_kmers_in_read(reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmerCounters, &seen);	
+			query_kmers_in_read(reads.seq, reads.qual, kmerLength, alpha, kmerCode, &kmerCounters, &total, &seen);	
 		}
 		//gettimeofday(&tend, NULL);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -532,7 +533,7 @@ int main( int argc, char *argv[] )
 		cur.tv_sec = (tend.tv_sec-tstart.tv_sec);
 		fprintf(stderr,"query_time %u\n",cur.tv_sec);
 	}
-	fprintf(stderr,"Finished query running time tests; saw %u kmers\n",seen);
+	fprintf(stderr,"Finished query running time tests; saw %u kmers; %u total\n",seen,total);
 	//do more counting here
 	//PrintSummary( summary ) ;
 	return 0 ;

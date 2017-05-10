@@ -162,7 +162,7 @@ void *SampleKmers_Thread( void *arg )
 	return NULL ;
 }
 
-void query_kmers_in_read( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreCQF *kmerCounters, size_t* kcount_seen )
+void query_kmers_in_read( char *read, char *qual, int kmerLength, double alpha, KmerCode &kmerCode, StoreCQF *kmerCounters, size_t* kcount_total, size_t* kcount_seen )
 {
 	int i ;
 	double p ;
@@ -175,7 +175,7 @@ void query_kmers_in_read( char *read, char *qual, int kmerLength, double alpha, 
 
 	if ( i < kmerLength )
 		return ;
-
+	*kcount_total+=1;	
 	p = rand() / (double)RAND_MAX ;
 	if ( p < alpha * factor )
 	{
@@ -188,6 +188,7 @@ void query_kmers_in_read( char *read, char *qual, int kmerLength, double alpha, 
 	for ( ; read[i] ; ++i )
 	{
 		kmerCode.Append( read[i] ) ;
+		*kcount_total+=1;	
 
 		p = rand() / (double)RAND_MAX ;
 		if ( p < alpha * factor )
