@@ -256,6 +256,98 @@ void *Output_Thread( void *arg )
 	return NULL ;
 }
 
+int test_kmer_counts(char* reads_file, char*** tkmers, int** counts)
+{
+	//if reads_file == 1M
+	if(strcmp(reads_file,"../tests/lambda_reads_1.fq") == 0)
+	{
+		/*char* tkmers_[2]={"AACCACCAGGCCATATCTGCC","ATGGAATTAAGTCGCACACCC"};
+		*tkmers = tkmers_;
+		int counts_[2]={1,18};
+		*counts = counts_;*/
+		(*tkmers)[0]="AACCACCAGGCCATATCTGCC";
+		(*tkmers)[1]="ATGGAATTAAGTCGCACACCC";
+		(*counts)[0]=1;
+		(*counts)[1]=18;
+		return 2;
+	}
+	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.1m") == 0 || strcmp(reads_file,"../tests/SRR197986_1.fastq.2m") == 0)
+	{
+		/*char* tkmers_[5]={"AACAGTGGCCCTTAATCAAAG","ACTGCAGGCAACAAACACAAA","ATGGGGGATTCGCGAAGAGAA","AATGGGGGATTTGCAAAGAGA","AAATCACGCGTTTTCTCTTCG"};
+		*tkmers = tkmers_;
+		int counts_[5]={1,11,245,2183,20391};
+		*counts = counts_;*/
+		(*tkmers)[0]="AACAGTGGCCCTTAATCAAAG";
+		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
+		(*tkmers)[2]="ATGGGGGATTCGCGAAGAGAA";
+		(*tkmers)[3]="AATGGGGGATTTGCAAAGAGA";
+		(*tkmers)[4]="AAATCACGCGTTTTCTCTTCG";
+		(*counts)[0]=1;
+		(*counts)[1]=11;
+		(*counts)[2]=245;
+		(*counts)[3]=2183;
+		(*counts)[4]=20391;
+		return 5;
+	}
+	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.4m") == 0)
+	{
+		char* tkmers_[6]={"CGGGCCGTTGCACGCAGGTCC","ACTGCAGGCAACAAACACAAA","CATCCAGGGATGGTGACTCAA","AACATCAGGCATTTTCTCTTA","AAACGCGTGATTTTCACTTAA","GATCGGAAGAGCGGTTCAGCA"};
+		*tkmers = tkmers_;
+		int counts_[6]={1,33,242,1445,10164,307022};
+		*counts = counts_;
+		(*tkmers)[0]="CGGGCCGTTGCACGCAGGTCC";
+		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
+		(*tkmers)[2]="CATCCAGGGATGGTGACTCAA";
+		(*tkmers)[3]="AACATCAGGCATTTTCTCTTA";
+		(*tkmers)[4]="AAACGCGTGATTTTCACTTAA";
+		(*tkmers)[5]="GATCGGAAGAGCGGTTCAGCA";
+		(*counts)[0]=1;
+		(*counts)[1]=33;
+		(*counts)[2]=242;
+		(*counts)[3]=1445;
+		(*counts)[4]=10164;
+		(*counts)[5]=307022;
+		return 6;
+	}
+	return 0;
+}
+
+
+
+void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_file, int kmerLength)
+{
+	//char* tkmers[2]={"AACCACCAGGCCATATCTGCC","ATGGAATTAAGTCGCACACCC"};
+	//int counts[2]={1,18};
+	char** tkmers = new char*[6];
+	int* counts = new int[6];
+	KmerCode kmerCode( kmerLength );
+	int num_kmers = test_kmer_counts(reads_file, &tkmers, &counts);
+	printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
+
+	int i;
+	for(i=0; i < num_kmers; i++)
+	{
+		kmerCode.Restart();
+		int j;
+		//printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
+		//printf("%s %d\n",tkmers[i],counts[i]);
+		for(j=0; j<kmerLength; j++)
+		{
+			kmerCode.Append( tkmers[i][j] );
+		}
+		uint64_t count = kmerCounters->IsIn(kmerCode);
+		int diff = counts[i] - count;
+		int diff_abs = abs(diff);
+		fprintf(stderr,"%d\t%d\t%d\t%d\t%s\n",counts[i],count,diff,diff_abs,tkmers[i]);
+		if(diff_abs > 0)
+		{
+			int diff_log = log10(diff_abs);
+			if(diff_log >= 1)
+				fprintf(stderr,"ORM\t%d\t%d\t%d\t%d\t%d\t%s\n",counts[i],count,diff,diff_abs,diff_log,tkmers[i]);
+		}
+	}
+}
+
 int main( int argc, char *argv[] )
 {
 	int kmerLength ;
@@ -394,12 +486,14 @@ int main( int argc, char *argv[] )
 	}
 
 	// Go the second round to get the reads files
+	int last_reads_file_idx = -1;
 	for ( i = 1 ; i < argc ; ++i )
 	{
 		if ( !strcmp( "-r", argv[i] ) )
 		{
 			reads.AddReadFile( argv[i + 1 ] ) ;
 			++i;
+			last_reads_file_idx = i;
 		}
 	}
 	if ( kmerLength == -1 )
@@ -484,30 +578,10 @@ int main( int argc, char *argv[] )
 		}*/
 		total_count = CountKmers( reads.seq, reads.qual, kmerLength, kmerCode, &kmerCounters, 0) ;
 	}
-	//CW: I commented these out
-	/*for ( i = 1 ; i <= kmerLength ; ++i )
-	{
-		int d = (int)( 0.1 / alpha * 2 );
-		double p ;
-		if ( d < 2 )
-			d = 2 ;
-		p = 1 - pow( ( 1 - alpha ), d ) ;
-		GetCumulativeBinomialDistribution( untrustF[i], i, p + tableAFP - p * tableAFP ) ;
-	}
+	PrintLog( "Finish counting kmers" ) ;
 
-
-	for ( i = 1 ; i <= kmerLength ; ++i )
-	{
-		for ( j = 0 ; j <= i ; ++j )
-		{
-			if ( untrustF[i][j] >= 1 - 0.5 * 1e-2 )
-			{
-				threshold[i] = j ;
-				break ;
-			}
-		}
-	}*/
-	PrintLog( "Finish sampling kmers" ) ;
+	//now try querying the static set of kmers per the input file
+	check_known_kmers_counts(&kmers, &kmerCounters, argv[last_reads_file_idx], kmerLength);
 		
 	sprintf( buffer, "Bloom filter A's false positive rate: %lf\nNon-unique K-mers seen %lu\nNon-unique K-mers added %lu\ntotal # of kmers with > 1 occurrences: %lu\n", tableAFP, nuniq_kmer_count_seen, nuniq_kmer_count_added, total_count ) ;
 	PrintLog( buffer ) ;
@@ -517,3 +591,5 @@ int main( int argc, char *argv[] )
 
 	return 0 ;
 }
+	
+	

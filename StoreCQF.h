@@ -116,7 +116,7 @@ public:
 		return 0 ;
 	}
 	
-	int IsIn( KmerCode &code ) 
+	uint64_t IsIn( KmerCode &code ) 
 	{
 		if ( !code.IsValid() )
 			return 0 ;
