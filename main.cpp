@@ -340,15 +340,13 @@ void check_known_kmers_counts(Store* kmers, StoreSF* kmerCounters, char* reads_f
 			kmerCode.Append( tkmers[i][j] );
 		}
 		uint64_t count = kmerCounters->IsIn(kmerCode);
-		int diff = counts[i] - count;
-		int diff_abs = abs(diff);
-		fprintf(stderr,"%d\t%d\t%d\t%d\t%s\n",counts[i],count,diff,diff_abs,tkmers[i]);
-		if(diff_abs > 0)
-		{
-			int diff_log = log10(diff_abs);
-			if(diff_log >= 1)
-				fprintf(stderr,"ORM\t%d\t%d\t%d\t%d\t%d\t%s\n",counts[i],count,diff,diff_abs,diff_log,tkmers[i]);
-		}
+		double diff = (double)count/counts[i];
+		if(count == 0)
+			diff = (double) (counts[i] - count);
+		int diff_log = log10(diff);
+		fprintf(stderr,"%d\t%d\t%.3f\t%d\t%s\n",counts[i],count,diff,diff_log,tkmers[i]);
+		if(abs(diff_log) >= 1 && abs(count - counts[i]) > 1)
+			fprintf(stderr,"ORM\t%d\t%d\t%.3f\t%d\t%s\n",counts[i],count,diff,diff_log,tkmers[i]);
 	}
 }
 
