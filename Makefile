@@ -1,6 +1,7 @@
 CXX = g++ -g -std=c++11
-CX = gcc
-CXXFLAGS= -Wall -O0 #-O3
+CX = gcc -g
+CXXFLAGS= -Wall -O3
+#CXXFLAGS= -Wall #-O3
 C_FLAGS= -std=c99 -Wall -Werror -pedantic -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls
 C_DEFINES = "-DSFF=1"
 LINKFLAGS = -lpthread -lz -lrt
