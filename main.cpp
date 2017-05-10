@@ -276,7 +276,7 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts)
 		(*counts)[1]=18;
 		return 2;
 	}
-	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.1m") == 0 || strcmp(reads_file,"../tests/SRR197986_1.fastq.2m") == 0)
+	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.1m") == 0)
 	{
 		/*char* tkmers_[5]={"AACAGTGGCCCTTAATCAAAG","ACTGCAGGCAACAAACACAAA","ATGGGGGATTCGCGAAGAGAA","AATGGGGGATTTGCAAAGAGA","AAATCACGCGTTTTCTCTTCG"};
 		*tkmers = tkmers_;
@@ -294,12 +294,24 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts)
 		(*counts)[4]=20391;
 		return 5;
 	}
+	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.2m") == 0)
+	{
+		(*tkmers)[0]="AACAGTGGCCCTTAATCAAAG";
+		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
+		(*tkmers)[2]="CCCCCATTTGACCCGAAAATC";
+		(*tkmers)[3]="AATGGGGGATTTGCAAAGAGA";
+		(*tkmers)[4]="CGAGATCGGTCTCGGCATTCC";
+		(*tkmers)[5]="GCGGTTCAGCAGGAATGCCGA";
+		(*counts)[0]=1;
+		(*counts)[1]=18;
+		(*counts)[2]=143;
+		(*counts)[3]=4510;
+		(*counts)[4]=17248;
+		(*counts)[5]=119528;
+		return 6;
+	}
 	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.4m") == 0)
 	{
-		char* tkmers_[6]={"CGGGCCGTTGCACGCAGGTCC","ACTGCAGGCAACAAACACAAA","CATCCAGGGATGGTGACTCAA","AACATCAGGCATTTTCTCTTA","AAACGCGTGATTTTCACTTAA","GATCGGAAGAGCGGTTCAGCA"};
-		*tkmers = tkmers_;
-		int counts_[6]={1,33,242,1445,10164,307022};
-		*counts = counts_;
 		(*tkmers)[0]="CGGGCCGTTGCACGCAGGTCC";
 		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
 		(*tkmers)[2]="CATCCAGGGATGGTGACTCAA";
