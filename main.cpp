@@ -348,12 +348,14 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 		{
 			kmerCode.Append( tkmers[i][j] );
 		}
-		uint64_t count = kmerCounters->IsIn(kmerCode);
-		if(count == 0)
+		uint64_t count = kmerCounters->IsIn(kmerCode) + 1;
+		if(count == 1)
 		{
 			//check BBF
 			if(kmers->IsIn(kmerCode))
 				count = 1;
+			else
+				count = 0;
 		}
 		avg_diff = avg_diff + std::abs((log10(counts[i]+0.1) - log10(count+0.1)));	
 		double diff = (double)count/counts[i];
