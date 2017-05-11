@@ -387,6 +387,7 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 	printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
 
 	double avg_diff = 0;
+	double avg_diff_out = 0;
 	int i;
 	for(i=0; i < num_rand_kmers+max_num_static_kmers; i++)
 	{
@@ -427,6 +428,7 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 			}
 			if(count_out > 0)
 				fprintf(stderr,"NOT_OUT\t%d\t%s\n",count_out,tkmers_out[i-max_num_static_kmers]);
+			avg_diff_out = avg_diff_out + std::abs((log10(0.1) - log10(count_out+0.1)));	
 		}
 		avg_diff = avg_diff + std::abs((log10(counts[i]+0.1) - log10(count+0.1)));	
 		double diff = (double)count/counts[i];
@@ -438,7 +440,9 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 			fprintf(stderr,"ORM\t%d\t%d\t%.3f\t%d\t%s\n",counts[i],count,diff,diff_log,tkmers[i]);
 	}
 	avg_diff = avg_diff / num_kmers;
-	fprintf(stderr,"avg diff: %.3f\n",avg_diff);
+	avg_diff_out = avg_diff_out / num_rand_kmers;
+	fprintf(stderr,"avg diff: %.4f\n",avg_diff);
+	fprintf(stderr,"avg diff outgroup: %.4f\n",avg_diff_out);
 }
 
 int main( int argc, char *argv[] )
