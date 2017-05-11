@@ -441,8 +441,8 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 	}
 	avg_diff = avg_diff / num_kmers;
 	avg_diff_out = avg_diff_out / num_rand_kmers;
-	fprintf(stderr,"avg diff: %.4f\n",avg_diff);
-	fprintf(stderr,"avg diff outgroup: %.4f\n",avg_diff_out);
+	fprintf(stderr,"avg diff: %.6f\n",avg_diff);
+	fprintf(stderr,"avg diff outgroup: %.6f\n",avg_diff_out);
 }
 
 int main( int argc, char *argv[] )
