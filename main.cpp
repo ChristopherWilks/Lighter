@@ -256,13 +256,15 @@ void *Output_Thread( void *arg )
 	return NULL ;
 }
 
-int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_length, int num_rand_kmers, int max_num_static_kmers)
+int test_kmer_counts(char* reads_file, char*** tkmers, char*** tkmers_out, int** counts, int kmer_length, int num_rand_kmers, int max_num_static_kmers)
 {
 	int ret = 0;
 	char* fname;
+	char* fname_out;
 	if(strcmp(reads_file,"../tests/lambda_reads_1.fq") == 0)
 	{
 		fname="../tests/lambda_reads_1.fq.kmers.gz.rand1k";
+		fname_out="../tests/lambda_reads_1.fq.kmers.gz.rand1k.out";
 		(*tkmers)[0]="AACCACCAGGCCATATCTGCC";
 		(*tkmers)[1]="ATGGAATTAAGTCGCACACCC";
 		(*tkmers)[2]=NULL;
@@ -280,6 +282,7 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_le
 	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.1m") == 0)
 	{
 		fname="../tests/SRR197986_1.fastq.1m.kmers.gz.rand1k";
+		fname_out="../tests/SRR197986_1.fastq.1m.kmers.gz.rand1k.out";
 		(*tkmers)[0]="AACAGTGGCCCTTAATCAAAG";
 		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
 		(*tkmers)[2]="ATGGGGGATTCGCGAAGAGAA";
@@ -297,6 +300,7 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_le
 	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.2m") == 0)
 	{
 		fname="../tests/SRR197986_1.fastq.2m.kmers.gz.rand1k";
+		fname_out="../tests/SRR197986_1.fastq.2m.kmers.gz.rand1k.out";
 		(*tkmers)[0]="AACAGTGGCCCTTAATCAAAG";
 		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
 		(*tkmers)[2]="CCCCCATTTGACCCGAAAATC";
@@ -314,6 +318,7 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_le
 	else if(strcmp(reads_file,"../tests/SRR197986_1.fastq.4m") == 0)
 	{
 		fname="../tests/SRR197986_1.fastq.4m.kmers.gz.rand1k";
+		fname_out="../tests/SRR197986_1.fastq.4m.kmers.gz.rand1k.out";
 		(*tkmers)[0]="CGGGCCGTTGCACGCAGGTCC";
 		(*tkmers)[1]="ACTGCAGGCAACAAACACAAA";
 		(*tkmers)[2]="CATCCAGGGATGGTGACTCAA";
@@ -337,12 +342,10 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_le
 	int j=0;
 	for(j=0;j<num_rand_kmers;j++)
 	{
-		//char temp_[line_length];
 		buff[j] = new char[line_length];
 	}
 	j = 0;
 	char* strp;
-	char buf[line_length];
 	while(fgets(buff[j], line_length, fin) != NULL)
 	{
 		strp = strtok(buff[j++],"\t");
@@ -351,6 +354,20 @@ int test_kmer_counts(char* reads_file, char*** tkmers, int** counts, int kmer_le
 		(*counts)[idx++] = atoi(strp);	
 	}
 	fclose(fin);
+	FILE *fin_out = fopen(fname_out,"r");
+	char* buff_out[num_rand_kmers];
+	for(j=0;j<num_rand_kmers;j++)
+	{
+		buff_out[j] = new char[line_length];
+	}
+	j = 0;
+	idx = 0;
+	while(fgets(buff_out[j], line_length, fin_out) != NULL)
+	{
+		strp = strtok(buff_out[j++],"\t");
+		(*tkmers_out)[idx++] = strp;	
+	}
+	fclose(fin_out);
 	return ret;
 }
 
@@ -361,9 +378,11 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 	int num_rand_kmers = 1000;
 	int max_num_static_kmers = 6;
 	char** tkmers = new char*[num_rand_kmers+max_num_static_kmers];
+	char** tkmers_out = new char*[num_rand_kmers];
 	int* counts = new int[num_rand_kmers+max_num_static_kmers];
 	KmerCode kmerCode( kmerLength );
-	int num_kmers = test_kmer_counts(reads_file, &tkmers, &counts, kmerLength, num_rand_kmers, max_num_static_kmers);
+	KmerCode kmerCode_out( kmerLength );
+	int num_kmers = test_kmer_counts(reads_file, &tkmers, &tkmers_out, &counts, kmerLength, num_rand_kmers, max_num_static_kmers);
 	num_kmers = num_kmers + num_rand_kmers;
 	printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
 
@@ -374,6 +393,7 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 		if(counts[i] == -1)
 			continue;
 		kmerCode.Restart();
+		kmerCode_out.Restart();
 		int j;
 		//printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
 		//printf("%s %d\n",tkmers[i],counts[i]);
@@ -389,6 +409,24 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 				count = 1;
 			else
 				count = 0;
+		}
+		if(i >= max_num_static_kmers)
+		{
+			for(j=0; j<kmerLength; j++)
+			{
+				kmerCode_out.Append( tkmers_out[i-max_num_static_kmers][j] );
+			}
+			uint64_t count_out = kmerCounters->IsIn(kmerCode_out) + 1;
+			if(count_out == 1)
+			{
+				//check BBF
+				if(kmers->IsIn(kmerCode_out))
+					count_out = 1;
+				else
+					count_out = 0;
+			}
+			if(count_out > 0)
+				fprintf(stderr,"NOT_OUT\t%d\t%s\n",count_out,tkmers_out[i-max_num_static_kmers]);
 		}
 		avg_diff = avg_diff + std::abs((log10(counts[i]+0.1) - log10(count+0.1)));	
 		double diff = (double)count/counts[i];
