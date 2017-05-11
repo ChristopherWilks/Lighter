@@ -336,6 +336,7 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 	int num_kmers = test_kmer_counts(reads_file, &tkmers, &counts);
 	printf("%s %d %s %d\n",tkmers[0],counts[0],tkmers[1],counts[1]);
 
+	double avg_diff = 0;
 	int i;
 	for(i=0; i < num_kmers; i++)
 	{
@@ -348,6 +349,13 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 			kmerCode.Append( tkmers[i][j] );
 		}
 		uint64_t count = kmerCounters->IsIn(kmerCode);
+		if(count == 0)
+		{
+			//check BBF
+			if(kmers->IsIn(kmerCode))
+				count = 1;
+		}
+		avg_diff = avg_diff + std::abs((log10(counts[i]+0.1) - log10(count+0.1)));	
 		double diff = (double)count/counts[i];
 		if(count == 0)
 			diff = (double) (counts[i] - count);
@@ -356,6 +364,8 @@ void check_known_kmers_counts(Store* kmers, StoreCQF* kmerCounters, char* reads_
 		if(abs(diff_log) >= 1 && abs(count - counts[i]) > 1)
 			fprintf(stderr,"ORM\t%d\t%d\t%.3f\t%d\t%s\n",counts[i],count,diff,diff_log,tkmers[i]);
 	}
+	avg_diff = avg_diff / num_kmers;
+	fprintf(stderr,"avg diff: %.3f\n",avg_diff);
 }
 
 int main( int argc, char *argv[] )
