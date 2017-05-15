@@ -340,6 +340,24 @@ int test_kmer_counts(char* reads_file, char*** tkmers, char*** tkmers_out, int**
 		(*counts)[5]=307022;
 		ret = 6;
 	}
+	else if(strcmp(reads_file,"../tests/ecoli_reads_140_1.fq") == 0)
+	{
+		fname="../tests/ecoli_reads_140_1.fq.21.full.kmers.gz.rand1k";
+		fname_out="../tests/ecoli_reads_140_1.fq.21.full.kmers.gz.rand1k.out";
+		(*tkmers)[0]="AAGATCGGTCGTGCCCAGGTC";
+		(*tkmers)[1]="CACCAGCGATTTCTATGCCTA";
+		(*tkmers)[2]="GGTTAAGGATATTGATATTCA";
+		(*tkmers)[3]="ACAGTGAATTCAGCAGTAAGC";
+		(*tkmers)[4]=NULL;
+		(*tkmers)[5]=NULL;
+		(*counts)[0]=1;
+		(*counts)[1]=92;
+		(*counts)[2]=113;
+		(*counts)[3]=1355;
+		(*counts)[4]=-1;
+		(*counts)[5]=-1;
+		ret = 4;
+	}
 	//fin = fopen("../tests/lambda_reads_1.fq.kmers.gz.rand1k","r");
 	int idx=max_num_static_kmers;
 	//kmer length + tab + max # of digits for kmer count (9)
